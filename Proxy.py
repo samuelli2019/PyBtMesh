@@ -1,0 +1,2 @@
+class ProxyMessage:
+    pass
