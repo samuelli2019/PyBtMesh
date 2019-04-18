@@ -75,6 +75,14 @@ class NetworkMessage:
         self._netkey_index = netkey_index
 
     @property
+    def header(self):
+        return self._header
+
+    @property
+    def pdu(self):
+        return self._pdu
+
+    @property
     def key_index(self):
         return self._netkey_index
 
@@ -118,11 +126,43 @@ if __name__ == "__main__":
     from Context import *
     from Util import *
 
-    message = bytes.fromhex('68eca487516765b5e5bfdacbaf6cb7fb6bff871f035444ce83a670df')
+    
 
     netkeys = [
-        NetworkKey.fromString('7dd7364cd842ad18c17c2b820c84c3d6', iv_index=0x12345678)
+        NetworkKey.fromString('604981DF5839F5A5A4025BBD768CEA6A', iv_index=0)
     ]
+
+    def toStr(s):
+        return ' '.join(map('{:02x}'.format, s))
+
+    def PayloadDecode(s):
+        total_len = len(s)
+        i = 0
+        packet_list = list()
+        while i < total_len:
+            packet_len = s[i]
+            packet_type = s[i+1]
+            packet_payload = s[i+2:i+packet_len+1]
+            i += packet_len+1
+            packet_list.append((packet_type, packet_payload))
+
+        if i != total_len:
+            print('i != total_len')
+        return packet_list
+
     with MeshContext(netkeys=netkeys) as context:
-        msg = NetworkMessage.from_bytes(message, ctx=context)
-        print(msg.to_bytes().hex)
+        import socket
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(('192.168.113.250', 10010))
+        f = sock.makefile()
+        while True:
+            l = f.readline()
+            rssi, addr, data = eval(l)
+            payloads = PayloadDecode(data)
+            for payload in payloads:
+                if payload[0] == 0x2a:
+                    message = payload[1]
+                    msg = NetworkMessage.from_bytes(message, ctx=context)
+                    if msg is not None:
+                        print(msg.header.ttl, msg.header.seq, '%04x' % msg.header.src, '%04x' % msg.pdu.dst)

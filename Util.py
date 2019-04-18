@@ -155,6 +155,7 @@ class NetworkKey(Key):
         return k1(self._key, s1(b'nkbk'), b'id128\x01')
     
     def nounce(self, seq):
+        pass
         
 
 class DeviceKey(Key):
