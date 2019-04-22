@@ -4,8 +4,27 @@ import operator
 import bitstring
 from Util import *
 
-class ApplicationMessage:
-    pass
+class ControlMessage:
+    def __init__(self):
+        pass
+
+    @classmethod
+    def from_bytes(self, data):
+        pass
+
+    def append_segment(self, segment):
+        pass
+
+class AccessMessage:
+    def __init__(self):
+        pass
+
+    @classmethod
+    def from_bytes(cls, data):
+        pass
+
+    def append_segment(self, segment):
+        pass
 
 def network_nounce(ctl, ttl, src, seq, iv_index):
     return bitstring.pack('uint:8, uint:1, uint:7, uintbe:24, uintbe:16, pad:16, uintbe:32',
