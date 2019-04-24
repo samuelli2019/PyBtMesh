@@ -1,6 +1,7 @@
 #!/bin/env python3
 
 import operator
+import uuid
 import bitstring
 from Util import *
 
@@ -136,10 +137,31 @@ class NetworkMessage:
         )
 
 class UnProvisionedBeacon:
-    pass
+    UNPROVISIONED_BEACON_STRUCT = 'uint:8, bytes:16, uintbe:16, bytes'
+    def __init__(self, device_uuid, oob, url_hash=None):
+        self._uuid = device_uuid
+        self._oob = oob
+        self._url_hash = url_hash
+
+    @classmethod
+    def from_bytes(cls, b):
+        _, bytes_uuid, bytes_oob, bytes_url_hash = bitstring.BitStream(b).unpack(cls.UNPROVISIONED_BEACON_STRUCT)
+        _uuid = uuid.UUID(bytes=bytes_uuid)
+        _oob = bytes_oob
+        _url_hash = bytes_url_hash
+        return cls(_uuid, _oob, _url_hash)
 
 class ProvisionedBeacon:
-    pass
+    PROVISIONED_BEACON_STRUCT = 'uint:8, uint:8, bytes:8, uintbe:32, bytes:8'
+    def __init__(self, flags, networkid, iv_index, authvalue):
+        self._networkid = networkid
+        self._iv_index = iv_index
+        self._authvalue = authvalue
+
+    @classmethod
+    def from_bytes(cls, b):
+        _, _flags, _networkid, _iv_index, _authvalue = bitstring.BitStream(b).unpack(cls.PROVISIONED_BEACON_STRUCT)
+        return cls(_flags, _networkid, _iv_index, _authvalue)
 
 if __name__ == "__main__":
     from Context import *
@@ -185,3 +207,12 @@ if __name__ == "__main__":
                     msg = NetworkMessage.from_bytes(message, ctx=context)
                     if msg is not None:
                         print(msg.header.ttl, msg.header.seq, '%04x' % msg.header.src, '%04x' % msg.pdu.dst)
+                elif payload[0] == 0x2b:
+                    provisioned = payload[1][0] == 0x01
+                    if provisioned:
+                        msg = ProvisionedBeacon.from_bytes(payload[1])
+                        print(rssi, addr.hex(), msg._networkid.hex())
+                    else:
+                        msg = UnProvisionedBeacon.from_bytes(payload[1])
+                        print(rssi, addr.hex(), msg._uuid)
+
