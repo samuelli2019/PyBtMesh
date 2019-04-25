@@ -5,6 +5,48 @@ import uuid
 import bitstring
 from Util import *
 
+class Message:
+    MESSAGE_STRUCT = 'uint:8, bytes'
+    MESH_PBADV = 0x29
+    MESH_MESSAGE = 'Mesh Messages'
+    MESH_BEACON = 'Mesh Network Beacon'
+
+    @classmethod
+    def from_bytes(cls, data):
+        msg_type, pdu = bitstring.BitStream(data).unpack(cls.MESSAGE_STRUCT)
+        if msg_type == cls.MESH_PBADV:
+            return MeshPBADV.from_bytes(pdu)
+        elif msg_type == cls.MESH_MESSAGE:
+            return MeshMessage.from_bytes(pdu)
+        elif msg_type == cls.MESH_BEACON:
+            return MeshBeacon.from_bytes(pdu)
+        else:
+            return None
+
+class MeshPBADV:
+    MESSAGE_STRUCT = ''
+    @classmethod
+    def from_bytes(cls, data):
+        pass
+
+class MeshMessage:
+    MESSAGE_STRUCT = ''
+    @classmethod
+    def from_bytes(cls, data):
+        pass
+
+class MeshBeacon:
+    MESSATE_STRUCT = ''
+    @classmethod
+    def from_bytes(cls, data):
+        pass
+
+class MessageType:
+    UnSegmentControlMessage = 'UnSegmentControlMessage'
+    SegmentControlMessage = 'SegmentControlMessage'
+    UnSegmentAccessMessage = 'UnSegmentAccessMessage'
+    SegmentAccessMessage = 'SegmentAccessMessage'
+
 class ControlMessage:
     def __init__(self):
         pass
@@ -13,98 +55,77 @@ class ControlMessage:
     def from_bytes(self, data):
         pass
 
+class SegmentControlMessage:
+    def __init__(self):
+        pass
+
     def append_segment(self, segment):
         pass
 
 class AccessMessage:
-    def __init__(self):
-        pass
+    MESSAGE_STRUCT = 'pad:1, uint:1, uint:6, bytes'
+    def __init__(self, akf, aid, pdu):
+        self._akf = akf
+        self._aid = aid
+        self._pdu = pdu
 
     @classmethod
     def from_bytes(cls, data):
+        akf, aid, pdu = bitstring.BitStream(data).unpack(cls.MESSAGE_STRUCT)
+        print(akf, aid, pdu)
+        return cls(akf, aid, pdu)
+
+class SegmentAccessMessage:
+    def __init__(self):
         pass
 
     def append_segment(self, segment):
         pass
 
-def network_nounce(ctl, ttl, src, seq, iv_index):
-    return bitstring.pack('uint:8, uint:1, uint:7, uintbe:24, uintbe:16, pad:16, uintbe:32',
-                            0x00, ctl, ttl, seq, src, iv_index).bytes
+
 
 class NetworkHeader:
     NETWORK_HEADER_STRUCT = 'uint:1, uint:7, uintbe:24, uintbe:16'
-    def __init__(self, ctl, ttl, seq, src):
-        self._ctl = ctl
-        self._ttl = ttl
-        self._seq = seq
-        self._src = src
-
-    @property
-    def ctl(self):
-        return self._ctl
-    
-    @property
-    def ttl(self):
-        return self._ttl
-
-    @property
-    def seq(self):
-        return self._seq
-
-    @property
-    def src(self):
-        return self._src
 
     @classmethod
-    def from_bytes(cls, b):
+    def decode(cls, b):
         ctl, ttl, seq, src = bitstring.BitStream(b).unpack(cls.NETWORK_HEADER_STRUCT)
-        return cls(ctl, ttl, seq, src)
-    
-    def to_bytes(self):
-        return bitstring.pack(self.NETWORK_HEADER_STRUCT, self.ctl, self.ttl, self.seq, self.src).bytes
+
 
 class NetworkEncryptedData:
     NETWORK_ENCRYPTED_STRUCT = 'uintbe:16, bytes'
-    def __init__(self, dst, pdu):
-        self._dst = dst
-        self._pdu = pdu
-    
-    @property
-    def dst(self):
-        return self._dst
-
-    @property
-    def pdu(self):
-        return self._pdu
 
     @classmethod
-    def from_bytes(cls, b):
-        dst, pdu = bitstring.BitStream(b).unpack(cls.NETWORK_ENCRYPTED_STRUCT)
-        return cls(dst, pdu)
+    def decode(cls, b):
+        return bitstring.BitStream(b).unpack(cls.NETWORK_ENCRYPTED_STRUCT)
 
     def to_bytes(self):
         return bitstring.pack(self.NETWORK_ENCRYPTED_STRUCT, self.dst, self.pdu).bytes
 
 class NetworkMessage:
-    NETWORK_MESSAGE_STRUCT = 'uint:1, uint:7, bytes:6, bytes'
-    def __init__(self, header, pdu, ctx, netkey_index=0):
-        self._ctx = ctx
-        self._netkey_index = netkey_index
-        self._header = header
+    NETWORK_MESSAGE_STRUCT = 'uint:1, uint:7, bytes'
+    def __init__(self, ctl:int, ttl:int, seq:int, src:int, dst:int, pdu:bytes):
+        self._ctl = ctl
+        self._ttl = ttl
+        self._seq = seq
+        self._src = src
+        self._dst = dst
         self._pdu = pdu
-        self._netkey_index = netkey_index
 
     @property
-    def header(self):
-        return self._header
+    def msg_type(self):
+        if self._ctl == 1 and self._pdu[0] == 0x00:
+            return MessageType.UnSegmentControlMessage
+        elif self._ctl == 1:
+            return MessageType.SegmentControlMessage
+        elif self._pdu[0] & 0x80 == 0x00:
+            return MessageType.UnSegmentAccessMessage
+        else:
+            return MessageType.SegmentAccessMessage
 
-    @property
-    def pdu(self):
-        return self._pdu
-
-    @property
-    def key_index(self):
-        return self._netkey_index
+    @classmethod
+    def decode(cls, data:bytes):
+        return iv_check, nid, header, pdu_mic = bitstring.BitStream(b).unpack(cls.NETWORK_MESSAGE_STRUCT)
 
     @classmethod
     def from_bytes(cls, b, ctx):
@@ -128,13 +149,6 @@ class NetworkMessage:
         else:
             return None
 
-    def to_bytes(self):
-        return bitstring.pack(self.NETWORK_MESSAGE_STRUCT, 
-            self._ctx.netkeys[self._netkey_index].iv_index & 0x01,
-            self._ctx.netkeys[self._netkey_index].nid & 0x7f,
-            self._header.to_bytes(),
-            self._pdu.to_bytes()
-        )
 
 class UnProvisionedBeacon:
     UNPROVISIONED_BEACON_STRUCT = 'uint:8, bytes:16, uintbe:16, bytes'
@@ -170,7 +184,16 @@ if __name__ == "__main__":
     
 
     netkeys = [
-        NetworkKey.fromString('604981DF5839F5A5A4025BBD768CEA6A', iv_index=0)
+        NetworkKey.fromString('BFF1AEBF4423B996BE05107444DED115', iv_index=0)
+    ]
+
+    appkeys = [
+        ApplicationKey.fromString(
+            'DCAEDABDAD04F67E690FEB70081A2FF9', iv_index=3903),
+        ApplicationKey.fromString(
+            'EE3DEBA7D4A9ADE41DF1C2EF0701CBB5', iv_index=3528),
+        ApplicationKey.fromString(
+            '8962E07FE0498ECBB996E5E88FADD7CD', iv_index=2268),
     ]
 
     def toStr(s):
@@ -191,8 +214,11 @@ if __name__ == "__main__":
             print('i != total_len')
         return packet_list
 
-    with MeshContext(netkeys=netkeys) as context:
+    with MeshContext(netkeys=netkeys, appkeys=appkeys) as context:
         import socket
+        x = Decoder('adsf')
+        import sys
+        sys.exit()
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect(('192.168.113.250', 10010))
@@ -206,13 +232,13 @@ if __name__ == "__main__":
                     message = payload[1]
                     msg = NetworkMessage.from_bytes(message, ctx=context)
                     if msg is not None:
-                        print(msg.header.ttl, msg.header.seq, '%04x' % msg.header.src, '%04x' % msg.pdu.dst)
-                elif payload[0] == 0x2b:
-                    provisioned = payload[1][0] == 0x01
-                    if provisioned:
-                        msg = ProvisionedBeacon.from_bytes(payload[1])
-                        print(rssi, addr.hex(), msg._networkid.hex())
-                    else:
-                        msg = UnProvisionedBeacon.from_bytes(payload[1])
-                        print(rssi, addr.hex(), msg._uuid)
+                        print(rssi, addr.hex(), msg.header.ttl, msg.header.seq, 'from: %04x' % msg.header.src, 'to: %04x' % msg.pdu.dst, msg.msg_type)
+                # elif payload[0] == 0x2b:
+                #     provisioned = payload[1][0] == 0x01
+                #     if provisioned:
+                #         msg = ProvisionedBeacon.from_bytes(payload[1])
+                #         print(rssi, addr.hex(), msg._networkid.hex())
+                #     else:
+                #         msg = UnProvisionedBeacon.from_bytes(payload[1])
+                #         print(rssi, addr.hex(), msg._uuid)
 
