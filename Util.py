@@ -93,9 +93,10 @@ def k4(N):
     return aid
 
 class Key:
-    def __init__(self, key, iv_index=0):
+    def __init__(self, key, iv_index, tag):
         self._key = key
         self._iv_index = iv_index
+        self._tag = tag
 
     @classmethod
     def fromString(cls, s, iv_index=0):
@@ -105,17 +106,21 @@ class Key:
     def fromBytes(cls, s, iv_index=0):
         return cls(s, iv_index)
 
+    @property
+    def tag(self):
+        return self._tag
+
 class ApplicationKey(Key):
-    def __init__(self, key, iv_index=0):
-        Key.__init__(self, key, iv_index)
-    
+    def __init__(self, key, iv_index=0, tag=''):
+        Key.__init__(self, key, iv_index, tag)
+
     @property
     @lru_cache(maxsize=1)
     def aid(self):
         return k4(self._key)
 
 class NetworkKey(Key):
-    def __init__(self, key, iv_index=0):
+    def __init__(self, key, iv_index=0, tag=''):
         Key.__init__(self, key, iv_index)
         self._nid, self._encryptkey, self._privacykey = self.encryption_keys
 

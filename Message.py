@@ -166,16 +166,16 @@ if __name__ == "__main__":
     from Util import *
 
     netkeys = [
-        NetworkKey.fromString('A622C6F2ED28997EE03BC73EF1A01D84', iv_index=0)
+        NetworkKey.fromString('A622C6F2ED28997EE03BC73EF1A01D84', iv_index=0, tag='network 1')
     ]
 
     appkeys = [
         ApplicationKey.fromString(
-            'DCAEDABDAD04F67E690FEB70081A2FF9', iv_index=3903),
+            'DCAEDABDAD04F67E690FEB70081A2FF9', iv_index=3903, tag='application 1'),
         ApplicationKey.fromString(
-            'EE3DEBA7D4A9ADE41DF1C2EF0701CBB5', iv_index=3528),
+            'EE3DEBA7D4A9ADE41DF1C2EF0701CBB5', iv_index=3528, tag='application 2'),
         ApplicationKey.fromString(
-            '8962E07FE0498ECBB996E5E88FADD7CD', iv_index=2268),
+            '8962E07FE0498ECBB996E5E88FADD7CD', iv_index=2268, tag='application 3'),
     ]
 
     def toStr(s):
@@ -214,12 +214,4 @@ if __name__ == "__main__":
                     ctx.decode_message(packet)
                 elif isinstance(packet, MeshBeacon):
                     pass
-                # elif payload[0] == 0x2b:
-                #     provisioned = payload[1][0] == 0x01
-                #     if provisioned:
-                #         msg = ProvisionedBeacon.from_bytes(payload[1])
-                #         print(rssi, addr.hex(), msg._networkid.hex())
-                #     else:
-                #         msg = UnProvisionedBeacon.from_bytes(payload[1])
-                #         print(rssi, addr.hex(), msg._uuid)
 
