@@ -22,6 +22,7 @@
 #
 #
 from functools import lru_cache
+import re
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import cmac
 from cryptography.hazmat.primitives.ciphers import algorithms, aead, Cipher, modes
@@ -161,3 +162,24 @@ class NetworkKey(Key):
 class DeviceKey(Key):
     def __init__(self, key):
         Key.__init__(self, key)
+
+class Addr(bytes):
+    def __str__(self, sep:str=':'):
+        return sep.join(map('{:02x}'.format, self))
+
+    @classmethod
+    def from_string(cls, s):
+        if isinstance(s, str):
+            if re.fullmatch("([0-9a-fA-F]{2}-){5}[0-9a-fA-F]{2}"):
+                return cls.fromhex(s.replace('-', ''))
+            elif re.fullmatch("([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}"):
+                return cls.fromhex(s.replace(':', ''))
+            elif re.fullmatch("[0-9a-fA-F]{12}"):
+                return cls.fromhex(s)
+            else:
+                return None
+        elif isinstance(s, bytes):
+            if len(s) == 6:
+                return cls(s)
+        
+        return None

@@ -17,16 +17,23 @@ class ContextConflictsError(Exception):
 class CannotInitialError(Exception):
     pass
 
-def header_obfs(header:bytes, key:Util.NetworkKey, pdu:bytes):
+def header_obfs(header: bytes, key: Util.NetworkKey, pdu: bytes):
     privacy_random = bitstring.pack(
         'pad:40, uintbe:32, bytes:7', key.iv_index, pdu[:7]).bytes
     pecb = Util.aes_ecb(key.privacy_key, privacy_random)[:6]
     return bytes(map(operator.xor, header, pecb))
 
-
 def network_nounce(ctl, ttl, src, seq, iv_index):
     return bitstring.pack('uint:8, uint:1, uint:7, uintbe:24, uintbe:16, pad:16, uintbe:32',
                           0x00, ctl, ttl, seq, src, iv_index).bytes
+
+class MessageStream:
+    def __init__(self):
+        pass
+
+class MessageStreamMgr:
+    def __init__(self):
+        pass
 
 class MeshContext:
     def __init__(self, netkeys=[], appkeys=[], devicekeys=[]):
@@ -61,43 +68,48 @@ class MeshContext:
     def _decode_net_msg(self, data:bytes, netkey_index:int):
         key = self._netkeys[netkey_index]
 
+        iv_index, nid, payload = Message.NetworkMessage.decode(data)
+
         #fast check
-        if key.iv_index != (key.iv_index & 0x01) or key.nid != key.nid & 0x7f:
+        if iv_index != (key.iv_index & 0x01) or nid != key.nid & 0x7f:
             return None
 
-        ctl, ttl, seq, src = NetworkHeader.decode(
-            header_obfs(header, key, pdu))
+        _header, _pdu = bitstring.BitStream(payload).unpack('bytes:6, bytes')
+
+        # decode basic information
+        ctl, ttl, seq, src = Message.NetworkHeader.decode(
+            header_obfs(_header, key, _pdu))
         
+        # decode more information
         tag_len = 8 if ctl == 1 else 4
         nounce = network_nounce(ctl, ttl, src, seq, key.iv_index)
-
         try:
-            temp = Util.aes_ccm_decrypt(key.encrypt_key, nounce, tag_length=tag_len)
+            temp = Util.aes_ccm_decrypt(
+                key.encrypt_key, nounce, _pdu, tag_length=tag_len)
         except cryptography.exceptions.InvalidTag:
             return None
-        dst, pdu = NetworkEncryptedData.decode(temp)
+        dst, pdu = Message.NetworkEncryptedData.decode(temp)
 
-        return (ctl, ttl, seq, src, dst), pdu
+        # decode upper message
+        msg = Message.get_msg(ctl, pdu)
+
+        return Message.NetworkMessage(ctl, ttl, seq, src, dst, msg)
 
     def _decode_app_msg(self, data:bytes, appkey_index:int):
         pass
 
-    def decode_message(self, data:bytes, netkey_index:int=None, appkey_index:int=None):
-        # iv_index, nid, data = Message.NetworkMessage.decode(data)
-        header, app_pdu = None, None
+    def decode_message(self, data: bytes, netkey_index: int = None, appkey_index: int = None):
+        key_index, msg = None, None
         for i in range(len(self._netkeys)):
-            temp = self._decode_net_msg(data, i)
-            if temp is not None:
-                header, app_pdu = temp
+            msg = self._decode_net_msg(data, i)
+            if msg is not None:
+                print(msg._ctl, msg._ttl, msg._seq, "from: %04x" % msg._src, "to: %04x" % msg._dst, msg._UpperMsg.MsgType)
+                key_index = i
                 break
         else:
             return None
         
-        for i in range(len(self._appkeys)):
-            appmsg = self._decode_app_msg(msg._pdu, i)
-            if appmsg is not None:
-                pass
-                
+        return key_index, msg
 
     def decode_secure_network_beacon(self, data):
         pass
