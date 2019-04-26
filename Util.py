@@ -99,12 +99,12 @@ class Key:
         self._tag = tag
 
     @classmethod
-    def fromString(cls, s, iv_index=0):
-        return cls(bytes.fromhex(s), iv_index)
+    def fromString(cls, s, iv_index=0, tag=''):
+        return cls(bytes.fromhex(s), iv_index, tag)
 
     @classmethod
-    def fromBytes(cls, s, iv_index=0):
-        return cls(s, iv_index)
+    def fromBytes(cls, s, iv_index=0, tag=''):
+        return cls(s, iv_index, tag)
 
     @property
     def tag(self):
@@ -121,7 +121,7 @@ class ApplicationKey(Key):
 
 class NetworkKey(Key):
     def __init__(self, key, iv_index=0, tag=''):
-        Key.__init__(self, key, iv_index)
+        Key.__init__(self, key, iv_index, tag)
         self._nid, self._encryptkey, self._privacykey = self.encryption_keys
 
     @property
