@@ -2,7 +2,9 @@
 
 import operator
 import uuid
+from functools import lru_cache
 import bitstring
+
 from Util import *
 
 class AdvertisingMessage:
@@ -12,7 +14,7 @@ class AdvertisingMessage:
     MESH_BEACON = 0x2b
 
     @classmethod
-    def from_bytes(cls, data):
+    def from_bytes(cls, data:bytes):
         msg_type, pdu = data
         # msg_type, pdu = bitstring.BitStream(data).unpack(cls.MESSAGE_STRUCT)
         if msg_type == cls.MESH_PBADV:
@@ -35,40 +37,88 @@ class MeshBeacon(bytes):
 
 class MessageType:
     UnSegmentControlMessage = 'UnSegmentControlMessage'
+    SegmentAckMessage = 'SegmengAckMessage'
     SegmentControlMessage = 'SegmentControlMessage'
     UnSegmentAccessMessage = 'UnSegmentAccessMessage'
     SegmentAccessMessage = 'SegmentAccessMessage'
 
-class ControlMessage:
+
+class BaseMessage:
+    STRUCT = 'bytes'
+
+    @classmethod
+    def unpack(cls, data:bytes):
+        return bitstring.ConstBitStream(data).unpack(cls.STRUCT)
+
+    @property
+    def trait(self):
+        # string to inditity different stream
+        return str(self)
+
+    @classmethod
+    def from_bytes(cls, data:bytes):
+        return cls(*(cls.unpack(data)))
+
+
+class ControlMessage(BaseMessage):
     STUCT = 'pad:0, uint:7, bytes'
-    def __init__(self, opcode, parameters):
+    def __init__(self, opcode:int, parameters:bytes):
         self._opcode = opcode
         self._parameters = parameters
+        self._trait = opcode
 
     @property
     def MsgType(self):
         return MessageType.UnSegmentControlMessage
 
-    @classmethod
-    def from_bytes(cls, data):
-        _, opcode, parameters = bitstring.BitStream(data).unpack(data)
-        return cls(opcode, parameters)
+    def __str__(self):
+        return "Control Message: %d" % self._opcode
 
-class SegmentControlMessage:
-    def __init__(self):
-        pass
+
+class SegmentAckMessage(BaseMessage):
+    STRUCT = 'pad:8, uint:1, uint:13, uint:2, uintbe:32'
+    def __init__(self, obo:int, seqzero:int, rfu:int, blockack:int):
+        self._obo = obo
+        self._seqzero = seqzero
+        self._rfu = rfu
+        # this is a bitmap
+        self._blockack = blockack
+
+    @property
+    def MsgType(self):
+        return MessageType.SegmentAckMessage
+
+    def __str__(self):
+        return "Message Segment ACK: %s" % bin(self._blockack)[2:].rjust(5, '0')
+
+
+class SegmentControlMessage(BaseMessage):
+    STRUCT = 'uint:1, uint:7, uint:1, uint:13, uint:5, uint:5, uintbe:32'
+    def __init__(self, seg:int, opcode:int, rfu:int, seqzero:int, segO:int, segN:int, data:bytes):
+        self._seg = seg
+        self._opcode = opcode
+        self._rfu = rfu
+        self._seqzero = seqzero
+        self._segO = segO
+        self._segN = segN
+        self._data = data
 
     @property
     def MsgType(self):
         return MessageType.SegmentControlMessage
 
-    @classmethod
-    def from_bytes(cls, data):
-        pass
+    def __str__(self):
+        return "Control Message Segment: %02x %d of %d" % (self._opcode, self._segO, self._segN)
 
-class AccessMessage:
-    MESSAGE_STRUCT = 'pad:1, uint:1, uint:6, bytes'
-    def __init__(self, akf, aid, pdu):
+    @property
+    @lru_cache(maxsize=1)
+    def trait(self):
+        return "%x %d %x" % (self._opcode, self._segN, self._seqzero)
+
+
+class AccessMessage(BaseMessage):
+    STRUCT = 'pad:1, uint:1, uint:6, bytes'
+    def __init__(self, akf:int, aid:int, pdu:bytes):
         self._akf = akf
         self._aid = aid
         self._pdu = pdu
@@ -77,27 +127,40 @@ class AccessMessage:
     def MsgType(self):
         return MessageType.UnSegmentAccessMessage
 
-    @classmethod
-    def from_bytes(cls, data):
-        akf, aid, pdu = bitstring.BitStream(data).unpack(cls.MESSAGE_STRUCT)
-        return cls(akf, aid, pdu)
+    def __str__(self):
+        return "Access Message AID: %02x" % (self._aid)
 
-class SegmentAccessMessage:
-    def __init__(self):
-        pass
+
+class SegmentAccessMessage(BaseMessage):
+    STRUCT = 'pad:1, uint:1, uint:6, uint:1, uint:13, uint:5, uint:5, bytes'
+    def __init__(self, akf:int, aid:int, szmic:int, seqzero:int, segO:int, segN:int, pdu:bytes):
+        self._akf = akf
+        self._aid = aid
+        self._szmic = szmic
+        self._seqzero = seqzero
+        self._segO = segO
+        self._segN = segN
+        self._pdu = pdu
 
     @property
     def MsgType(self):
         return MessageType.SegmentAccessMessage
 
-    @classmethod
-    def from_bytes(cls, data):
-        pass
+    @property
+    @lru_cache(maxsize=1)
+    def trait(self):
+        return "%d %d %x %d" % (self._akf, self._aid, self._seqzero, self._segN)
 
-def get_msg(ctl, data):
+    def __str__(self):
+        return "Segment Message: %d of %d" % (self._segO, self._segN)
+
+def get_msg(ctl, data:bytes):
     isSeg,_ = bitstring.ConstBitStream(data).unpack('uint:1, bits')
     if ctl == 1 and isSeg == 0:
-        return ControlMessage.from_bytes(data)
+        if data[0] == 0x00:
+            return SegmentAckMessage.from_bytes(data)
+        else:
+            return ControlMessage.from_bytes(data)
     elif ctl == 1:
         return SegmentControlMessage.from_bytes(data)
     elif isSeg == 0:
@@ -128,6 +191,26 @@ class NetworkMessage:
         self._src = src
         self._dst = dst
         self._UpperMsg = upperMsg
+
+    @property
+    def netkey(self):
+        return self._netkey
+    
+    @netkey.setter
+    def netkey(self, key):
+        self._netkey = key
+
+    # @property
+    # def appkey(self):
+    #     return self._appkey
+
+    # @property.setter
+    # def appkey(self, key):
+    #     self._appkey = key
+
+    @property
+    def trait(self):
+        return '%04x %04x %s' % (self._src, self._dst, self._UpperMsg.trait)
 
     @classmethod
     def decode(cls, data:bytes):
@@ -166,16 +249,26 @@ if __name__ == "__main__":
     from Util import *
 
     netkeys = [
-        NetworkKey.fromString('A622C6F2ED28997EE03BC73EF1A01D84', iv_index=0, tag='network 1')
+        NetworkKey.fromString(
+            'F31F668126C6BCFF9FC9E068B492F0BD', iv_index=0, tag='network')
     ]
 
     appkeys = [
         ApplicationKey.fromString(
-            'DCAEDABDAD04F67E690FEB70081A2FF9', iv_index=3903, tag='application 1'),
+            '1D434F61BDEE7E11BA2ADD9D78A29098', iv_index=3468, tag='application 1'),
         ApplicationKey.fromString(
-            'EE3DEBA7D4A9ADE41DF1C2EF0701CBB5', iv_index=3528, tag='application 2'),
+            '11BECECEBD6E979ED64C30C609BDE34C', iv_index=2824, tag='application 2'),
         ApplicationKey.fromString(
-            '8962E07FE0498ECBB996E5E88FADD7CD', iv_index=2268, tag='application 3'),
+            '4509FAC31BB4EDF851669AE2FEA2F3BC', iv_index=3852, tag='application 3'),
+    ]
+
+    devkeys = [
+        DeviceKey.fromString(
+            'DF590A424511618A3293CA1B5348829E', nodeid=2),
+        DeviceKey.fromString(
+            '9EC0DEF4F64197E2A1F5C3468035CE88', nodeid=4),
+        DeviceKey.fromString(
+            'FF420B486C309BD9CB60B78376BAADF3', nodeid=6),
     ]
 
     def toStr(s):
@@ -193,10 +286,11 @@ if __name__ == "__main__":
             packet_list.append((packet_type, packet_payload))
 
         if i != total_len:
+            print(s.hex())
             print('i != total_len')
         return packet_list
 
-    with MeshContext(netkeys=netkeys, appkeys=appkeys) as ctx:
+    with MeshContext(netkeys=netkeys, appkeys=appkeys, devicekeys=devkeys) as ctx:
         import socket
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -206,7 +300,12 @@ if __name__ == "__main__":
             l = f.readline()
             rssi, addr, data = eval(l)
             addr = Util.Addr(addr)
-            payloads = PayloadDecode(data)
+            payloads = None
+            try:
+                payloads = PayloadDecode(data)
+            except IndexError:
+                print(rssi, addr, data.hex())
+                continue
             for payload in payloads:
                 packet = AdvertisingMessage.from_bytes(payload)
                 if isinstance(packet, MeshMessage):

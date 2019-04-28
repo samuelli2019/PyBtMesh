@@ -93,35 +93,40 @@ def k4(N):
     return aid
 
 class Key:
-    def __init__(self, key, iv_index, tag):
+    def __init__(self, key, **kwargs):
         self._key = key
-        self._iv_index = iv_index
-        self._tag = tag
+        self._iv_index = kwargs['iv_index'] if 'iv_index' in kwargs else 0
+        self._tag = kwargs['tag'] if 'tag' in kwargs else ''
+        self._nodeid = kwargs['nodeid'] if 'nodeid' in kwargs else -1
 
     @classmethod
-    def fromString(cls, s, iv_index=0, tag=''):
-        return cls(bytes.fromhex(s), iv_index, tag)
+    def fromString(cls, s, **kwargs):
+        return cls(bytes.fromhex(s), **kwargs)
 
     @classmethod
-    def fromBytes(cls, s, iv_index=0, tag=''):
-        return cls(s, iv_index, tag)
+    def fromBytes(cls, s, **kwargs):
+        return cls(s, **kwargs)
 
     @property
     def tag(self):
         return self._tag
 
 class ApplicationKey(Key):
-    def __init__(self, key, iv_index=0, tag=''):
-        Key.__init__(self, key, iv_index, tag)
+    def __init__(self, key, **kwargs):
+        Key.__init__(self, key, **kwargs)
 
     @property
     @lru_cache(maxsize=1)
     def aid(self):
         return k4(self._key)
 
+    @property
+    def key(self):
+        return self._key
+
 class NetworkKey(Key):
-    def __init__(self, key, iv_index=0, tag=''):
-        Key.__init__(self, key, iv_index, tag)
+    def __init__(self, key, **kwargs):
+        Key.__init__(self, key, **kwargs)
         self._nid, self._encryptkey, self._privacykey = self.encryption_keys
 
     @property
@@ -165,8 +170,20 @@ class NetworkKey(Key):
         
 
 class DeviceKey(Key):
-    def __init__(self, key):
-        Key.__init__(self, key)
+    def __init__(self, key, **kwargs):
+        Key.__init__(self, key, **kwargs)
+
+    @property
+    def key(self):
+        return self._key
+
+    # @classmethod
+    # def fromString(cls, s, nodeId=0):
+    #     return cls(bytes.fromhex(s), nodeId)
+
+    # @classmethod
+    # def fromBytes(cls, s, nodeId=0):
+    #     return cls(s, nodeId)
 
 class Addr(bytes):
     def __str__(self, sep:str=':'):
