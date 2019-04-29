@@ -84,17 +84,25 @@ class MessageStreamMgr:
                     pass
         return False
 
-    def _decode_devdata(self, msg, data, szmic=False):
+    def _decode_devdata(self, msg, data, szmic=False, seqauth=None):
         for devkey in self._ctx.devicekeys:
             if devkey._nodeid == msg._dst:
                 try:
-                    nounce = device_nounce(msg._src, msg._dst, msg._seq, msg.netkey.iv_index, szmic)
+                    nounce = None
+                    if seqauth is not None:
+                        nounce = application(msg._src, msg._dst, seqauth,
+                                             msg.netkey.iv_index, szmic)
+                    else:
+                        nounce = application(msg._src, msg._dst, msg._seq,
+                                             msg.netkey.iv_index, szmic)
                     d = Util.aes_ccm_decrypt(devkey.key, nounce, data)
+
                     self._access_caller(
                         msg.netkey, devkey, msg._src, msg._dst, d)
                     return True
                 except cryptography.exceptions.InvalidTag:
-                    print('key error')
+                    # print('key error')
+                    pass
         return False
 
     def do_parse(self, trait):
@@ -104,49 +112,26 @@ class MessageStreamMgr:
             print(msgs[0]._UpperMsg)
             self._on_msg(msgs[0]._UpperMsg)
         elif isinstance(msgs[0]._UpperMsg, Message.SegmentAccessMessage):
-            # print(len(msgs), msgs[-1]._UpperMsg._segO, msgs[0]._UpperMsg._segN)
-            # print(msgs[0]._UpperMsg._akf)
-            # data = msgs[-1]._UpperMsg._pdu
-            # for appkey in self._ctx.appkeys:
-            #     if appkey.aid & 0x3f == msgs[-1]._UpperMsg._aid:
-            #         try:
-            #             nounce = application(msgs[-1]._src, msgs[-1]._dst, msgs[-1]._seq,
-            #                                  msgs[-1].netkey.iv_index, True)
-            #             d = Util.aes_ccm_decrypt(appkey.key, nounce, data)
-
-            #             print(d)
-            #         except cryptography.exceptions.InvalidTag:
-            #             print('error')
-            # return False
             if len(msgs) >= msgs[0]._UpperMsg._segN:
                 slots = list(range(msgs[0]._UpperMsg._segN+1))
-                # print(msgs[0]._UpperMsg._segN, len(slots))
-                iv_index_0 = 0
-                seq_0 = 0
+                
+                seq_list = []
                 for msg in msgs:
-                    # print(hex(msg._seq), msg._UpperMsg._segO,
-                    #       hex(msg._UpperMsg._seqzero))
-                    if msg._UpperMsg._segO == 0:
-                        iv_index_0 = msg.netkey.iv_index
-                        seq_0 = msg._seq
+                    seq_list.append(msg._seq - msg._UpperMsg._segO)
                     slots[msg._UpperMsg._segO] = msg._UpperMsg._pdu
                 # check is all data received
                 for i in range(len(slots)):
                     if isinstance(slots[i], int):
-                        print('not complement')
+                        print('not complement: ', ''.join(map(lambda c:'*' if isinstance(c, int) else '.', slots)))
                         return
+                iv_index_0 = msgs[0].netkey.iv_index
+                seq_0 = msgs[0]._UpperMsg._segO
+                mask = seqauth = (iv_index_0 << 24) | seq_0
+                mask &= 0xffc00
+                seqauth = mask | msgs[0]._UpperMsg._seqzero
                 
+                seq_0 = min(seq_list)
                 data = b''.join(slots)
-                print(data.hex())
-                # print(iv_index_0, hex(seq_0))
-                # seqauth = (iv_index_0 << 24) | seq_0
-                # print(hex(seqauth))
-                # # seqauth -= 0x1fff
-                # seqauth &= ((1 << 24) - 1)
-                # print(hex(seqauth))
-                # print(hex(msgs[0]._UpperMsg._seqzero))
-                # # decrypt
-                # print(msgs[0]._UpperMsg._akf)
                 seqauth = seq_0
                 if msgs[0]._UpperMsg._akf == 1:
                     if self._decode_appdata(msgs[0], data, msg._UpperMsg._szmic, seqauth):
@@ -172,9 +157,6 @@ class MessageStreamMgr:
             print(msgs[0]._UpperMsg)
             self._ack_caller()
 
-    def decrypt_payload(self, key: bytes, data: bytes):
-        pass
-
     def get_app_key(self, msg: Message.NetworkMessage):
         for appkey in self._ctx.appkeys:
             if appkey.aid & 0x3f == msg._UpperMsg._aid:
@@ -198,8 +180,8 @@ class MessageStreamMgr:
     def append(self, msg: Message.NetworkMessage):
         # print(msg._UpperMsg)
         if not self.check_key(msg):
-            print(msg._src, msg._dst)
-            print('key not match')
+            # print(msg._src, msg._dst)
+            # print('key not match')
             return
         if msg.trait in self._streams:
             self._streams[msg.trait].append(msg)
@@ -210,11 +192,11 @@ class MessageStreamMgr:
         
 
 class MeshContext:
-    def __init__(self, netkeys=[], appkeys=[], devicekeys=[]):
+    def __init__(self, netkeys=[], appkeys=[], devicekeys=[], OnAccessMsg=None):
         self._netkeys = netkeys
         self._appkeys = appkeys
         self._devicekeys = devicekeys
-        self._msgmgr = MessageStreamMgr(self)
+        self._msgmgr = MessageStreamMgr(self, OnMessageCb=OnAccessMsg)
 
     @property
     def netkeys(self):

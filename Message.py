@@ -304,12 +304,12 @@ if __name__ == "__main__":
             try:
                 payloads = PayloadDecode(data)
             except IndexError:
-                print(rssi, addr, data.hex())
+                # print(rssi, addr, data.hex())
                 continue
             for payload in payloads:
                 packet = AdvertisingMessage.from_bytes(payload)
                 if isinstance(packet, MeshMessage):
-                    print(rssi, addr)
+                    # print(rssi, addr)
                     ctx.decode_message(packet)
                 elif isinstance(packet, MeshBeacon):
                     pass
