@@ -250,25 +250,25 @@ if __name__ == "__main__":
 
     netkeys = [
         NetworkKey.fromString(
-            'F31F668126C6BCFF9FC9E068B492F0BD', iv_index=0, tag='network')
+            '395CF5599D988B6AECEF924D6F840724', iv_index=0, tag='network')
     ]
 
     appkeys = [
         ApplicationKey.fromString(
-            '1D434F61BDEE7E11BA2ADD9D78A29098', iv_index=3468, tag='application 1'),
+            '297537E2121446E9DEBCD30F2C843766', iv_index=953, tag='application 1'),
         ApplicationKey.fromString(
-            '11BECECEBD6E979ED64C30C609BDE34C', iv_index=2824, tag='application 2'),
+            'E02CBF7DC54AE7B13A79FEA9FE06CD27', iv_index=865, tag='application 2'),
         ApplicationKey.fromString(
-            '4509FAC31BB4EDF851669AE2FEA2F3BC', iv_index=3852, tag='application 3'),
+            '7B05098D194F76F70C490638CD3D9EAD', iv_index=17, tag='application 3'),
     ]
 
     devkeys = [
         DeviceKey.fromString(
-            'DF590A424511618A3293CA1B5348829E', nodeid=2),
+            '1FFCC17C6411835164769DF36BF8AE01', nodeid=2),
         DeviceKey.fromString(
-            '9EC0DEF4F64197E2A1F5C3468035CE88', nodeid=4),
+            '5ABD9DC7F2C43CBE335D47501E04A23F', nodeid=4),
         DeviceKey.fromString(
-            'FF420B486C309BD9CB60B78376BAADF3', nodeid=6),
+            'DDD0035D1D3AC520E8031700C812BC82', nodeid=6),
     ]
 
     def toStr(s):
