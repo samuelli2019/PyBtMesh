@@ -178,10 +178,7 @@ class MessageStreamMgr:
 
 
     def append(self, msg: Message.NetworkMessage):
-        # print(msg._UpperMsg)
         if not self.check_key(msg):
-            # print(msg._src, msg._dst)
-            # print('key not match')
             return
         if msg.trait in self._streams:
             self._streams[msg.trait].append(msg)
@@ -252,9 +249,6 @@ class MeshContext:
         netmsg = Message.NetworkMessage(ctl, ttl, seq, src, dst, msg)
 
         return netmsg
-
-    def _decode_app_msg(self, data:bytes, appkey_index:int):
-        pass
 
     def decode_message(self, data: bytes, netkey_index: int = None, appkey_index: int = None):
         key_index, msg = None, None

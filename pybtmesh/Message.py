@@ -200,14 +200,6 @@ class NetworkMessage:
     def netkey(self, key):
         self._netkey = key
 
-    # @property
-    # def appkey(self):
-    #     return self._appkey
-
-    # @property.setter
-    # def appkey(self, key):
-    #     self._appkey = key
-
     @property
     def trait(self):
         return '%04x %04x %s' % (self._src, self._dst, self._UpperMsg.trait)
