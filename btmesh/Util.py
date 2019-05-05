@@ -198,11 +198,11 @@ class Addr(bytes):
     @classmethod
     def from_string(cls, s):
         if isinstance(s, str):
-            if re.fullmatch("([0-9a-fA-F]{2}-){5}[0-9a-fA-F]{2}"):
+            if re.fullmatch("([0-9a-fA-F]{2}-){5}[0-9a-fA-F]{2}", s):
                 return cls.fromhex(s.replace('-', ''))
-            elif re.fullmatch("([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}"):
+            elif re.fullmatch("([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}", s):
                 return cls.fromhex(s.replace(':', ''))
-            elif re.fullmatch("[0-9a-fA-F]{12}"):
+            elif re.fullmatch("[0-9a-fA-F]{12}", s):
                 return cls.fromhex(s)
             else:
                 return None

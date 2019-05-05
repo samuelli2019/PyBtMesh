@@ -6,7 +6,7 @@ setup(
     name='PyBtMesh',
     version='0.1',
     description='Python module for bluetooth mesh',
-    author='Samuel Li',
+    author='samuelli2019',
     author_email='lijyigac@gmail.com',
     url='https://github.com/samuelli2019/PyBtMesh',
     packages=['btmesh'],
