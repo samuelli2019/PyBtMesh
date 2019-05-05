@@ -1,11 +1,11 @@
-from Context import *
-from Message import *
-from Util import *
+from btmesh.Context import *
+from btmesh.Message import *
+from btmesh.Util import *
 
 netkeys = [
-     NetworkKey.fromString(
-         '395CF5599D988B6AECEF924D6F840724', iv_index=0, tag='network')
-     ]
+    NetworkKey.fromString(
+        '395CF5599D988B6AECEF924D6F840724', iv_index=0, tag='network')
+]
 
 appkeys = [
     ApplicationKey.fromString(
@@ -14,7 +14,7 @@ appkeys = [
         'E02CBF7DC54AE7B13A79FEA9FE06CD27', iv_index=865, tag='application 2'),
     ApplicationKey.fromString(
         '7B05098D194F76F70C490638CD3D9EAD', iv_index=17, tag='application 3'),
-    ]
+]
 
 devkeys = [
     DeviceKey.fromString(
@@ -23,10 +23,12 @@ devkeys = [
         '5ABD9DC7F2C43CBE335D47501E04A23F', nodeid=4),
     DeviceKey.fromString(
         'DDD0035D1D3AC520E8031700C812BC82', nodeid=6),
-    ]
+]
+
 
 def toStr(s):
     return ' '.join(map('{:02x}'.format, s))
+
 
 def PayloadDecode(s):
     total_len = len(s)
@@ -43,6 +45,7 @@ def PayloadDecode(s):
         print(s.hex())
         print('i != total_len')
     return packet_list
+
 
 devices = {
     "f5:b6:b8:39:e1:88": 2,
@@ -62,6 +65,7 @@ for _, nodeid in devices.items():
 
 counter = 0
 
+
 def callback(netkey, appkey, src: int, dst: int, opcode: int, parameters: bytes):
     global counter
     if opcode == 0xc40131:
@@ -78,9 +82,10 @@ def callback(netkey, appkey, src: int, dst: int, opcode: int, parameters: bytes)
             weights[hash_key] /= 2
             weights[hash_key] += rssi / 2
         else:
-            print('find new connection: src %04x to dst %04x rssi %d' % (src, r_node_id, rssi))
+            print('find new connection: src %04x to dst %04x rssi %d' %
+                  (src, r_node_id, rssi))
             weights[hash_key] = 1.0 * rssi
-        
+
         # print(pair, "%.02f"%weights[hash_key])
 
 
@@ -119,7 +124,7 @@ with MeshContext(netkeys=netkeys, appkeys=appkeys, devicekeys=devkeys, OnAccessM
     except KeyboardInterrupt:
         pass
     sock.close()
-    
+
     import networkx as nx
     g = nx.Graph()
     ws = set()
@@ -128,7 +133,8 @@ with MeshContext(netkeys=netkeys, appkeys=appkeys, devicekeys=devkeys, OnAccessM
         g.add_node(node, node_color='blue')
     for k, weight in weights.items():
         node_1, node_2 = eval(k)
-        g.add_edge(node_1, node_2, weight=((128+weight)/128)**2, label='%.01f'%weight)
+        g.add_edge(node_1, node_2, weight=((128+weight)/128)
+                   ** 2, label='%.01f' % weight)
 
     pos = nx.spectral_layout(g)
     nx.draw(g, pos, with_labels=True)
@@ -136,4 +142,3 @@ with MeshContext(netkeys=netkeys, appkeys=appkeys, devicekeys=devkeys, OnAccessM
     nx.draw_networkx_edge_labels(g, pos, edge_labels=labels)
     import matplotlib.pyplot as plt
     plt.show()
-

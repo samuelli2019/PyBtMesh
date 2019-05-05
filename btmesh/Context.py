@@ -4,8 +4,8 @@ import operator
 import logging
 import bitstring
 import cryptography
-import Util
-import Message
+import btmesh.Util as Util
+import btmesh.Message as Message
 
 
 class CannotInitialError(Exception):
@@ -40,7 +40,7 @@ class MessageStreamMgr:
         self._streams = dict()
         self._ctx = context
         def _caller(netkey, appkey, src:int, dst:int, opcode:int, parameters:bytes):
-            print("\tfrom: %04x to: %04x opcode: %x" % (src, dst, opcode), 'parameter:', ' '.join(map('{:02x}'.format, parameters)))
+            print("from: %04x to: %04x opcode: %x" % (src, dst, opcode), 'parameter:', ' '.join(map('{:02x}'.format, parameters)))
         self._on_msg = _caller if OnMessageCb is None else OnMessageCb
 
     def _access_caller(self, netkey, appkey, src: int, dst: int, payload: bytes):
@@ -266,7 +266,21 @@ class MeshContext:
         return key_index, msg
 
     def decode_secure_network_beacon(self, data):
-        pass
+        beacon = Message.ProvisionedBeacon.from_bytes(data)
+        def get_auth(flags: int, networkid: bytes, ivindex: int, key: Util.NetworkKey):
+            temp = bitstring.pack('uint:8, bytes:8, uintbe:32',
+                flags, networkid, ivindex)[:8]
+            return Util.aes_cmac(key.beacon, temp)
+        for i, key in enumerate(self._netkeys):
+            auth_value = get_auth(beacon.flags, beacon.NetworkId, beacon.IV_Index, key)
+            if auth_value == beacon.AuthValue:
+                return i, beacon
+        else:
+            return -1, beacon
+
+    def decode_unprovisioned_network_beacon(self, data):
+        return Message.UnProvisionedBeacon.from_bytes(data)
+
 
     def encode_message(self, msg, network_keyIndex=0, app_keyIndex=0):
         pass

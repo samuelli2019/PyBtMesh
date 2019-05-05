@@ -40,6 +40,7 @@ def aes_ccm(k, n, m, a=b'', tag_length=4):
     c = aead.AESCCM(k, tag_length)
     return c.encrypt(n, m, a)
 
+
 def aes_ccm_decrypt(k, n, m, a=b'', tag_length=4):
     c = aead.AESCCM(k, tag_length)
     return c.decrypt(n, m, a)
@@ -71,7 +72,8 @@ def k2(N, P):
 
     k = (T1 + T2 + T3)[-33:]
 
-    n, e, p = bitstring.BitString(k).unpack('pad:1, uint:7, bits:128, bits:128')
+    n, e, p = bitstring.BitString(k).unpack(
+        'pad:1, uint:7, bits:128, bits:128')
 
     return n, e.bytes, p.bytes
 
@@ -92,6 +94,7 @@ def k4(N):
 
     return aid
 
+
 class Key:
     def __init__(self, key, **kwargs):
         self._key = key
@@ -111,6 +114,7 @@ class Key:
     def tag(self):
         return self._tag
 
+
 class ApplicationKey(Key):
     def __init__(self, key, **kwargs):
         Key.__init__(self, key, **kwargs)
@@ -124,6 +128,7 @@ class ApplicationKey(Key):
     def key(self):
         return self._key
 
+
 class NetworkKey(Key):
     def __init__(self, key, **kwargs):
         Key.__init__(self, key, **kwargs)
@@ -136,11 +141,11 @@ class NetworkKey(Key):
     @property
     def iv_index(self):
         return self._iv_index
-    
+
     @property
     def encrypt_key(self):
         return self._encryptkey
-    
+
     @property
     def privacy_key(self):
         return self._privacykey
@@ -164,10 +169,10 @@ class NetworkKey(Key):
     @lru_cache(maxsize=1)
     def beacon_key(self):
         return k1(self._key, s1(b'nkbk'), b'id128\x01')
-    
+
     def nounce(self, seq):
         pass
-        
+
 
 class DeviceKey(Key):
     def __init__(self, key, **kwargs):
@@ -185,8 +190,9 @@ class DeviceKey(Key):
     # def fromBytes(cls, s, nodeId=0):
     #     return cls(s, nodeId)
 
+
 class Addr(bytes):
-    def __str__(self, sep:str=':'):
+    def __str__(self, sep: str = ':'):
         return sep.join(map('{:02x}'.format, self))
 
     @classmethod
@@ -203,5 +209,5 @@ class Addr(bytes):
         elif isinstance(s, bytes):
             if len(s) == 6:
                 return cls(s)
-        
+
         return None

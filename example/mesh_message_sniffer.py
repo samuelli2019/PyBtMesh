@@ -65,5 +65,8 @@ with MeshContext(netkeys=netkeys, appkeys=appkeys, devicekeys=devkeys) as ctx:
             continue
         for payload in payloads:
             packet = AdvertisingMessage.from_bytes(payload)
-            if isinstance(packet, MeshBeacon):
+            if isinstance(packet, MeshMessage):
+                # print(rssi, addr)
+                ctx.decode_message(packet)
+            elif isinstance(packet, MeshBeacon):
                 pass
