@@ -4,8 +4,8 @@ import operator
 import logging
 import bitstring
 import cryptography
-import btmesh.Util as Util
-import btmesh.Message as Message
+from btmesh import Util
+from btmesh import Message
 
 
 class CannotInitialError(Exception):

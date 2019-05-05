@@ -1,8 +1,6 @@
 # coding:utf-8
 
 from setuptools import setup
-# or
-# from distutils.core import setup
 
 setup(
     name='PyBtMesh',
@@ -13,4 +11,9 @@ setup(
     url='https://github.com/samuelli2019/PyBtMesh',
     packages=['btmesh'],
     requires=["bitstring", "cryptography"],
+    classifiers=[
+        'Development Status :: 2 - Pre-Alpha',
+        'Intended Audience :: Developers',
+        'Topic :: Software Development :: Libraries :: Python Modules'
+    ]
 )
