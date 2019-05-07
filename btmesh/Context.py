@@ -8,6 +8,8 @@ from btmesh import Util
 from btmesh import Message
 
 
+__all__ = ['CannotInitialError', 'MeshContext']
+
 class CannotInitialError(Exception):
     pass
 
@@ -82,6 +84,7 @@ class MessageStreamMgr:
                     return True
                 except cryptography.exceptions.InvalidTag:
                     pass
+        print('not decrypted')
         return False
 
     def _decode_devdata(self, msg, data, szmic=False, seqauth=None):
@@ -101,7 +104,6 @@ class MessageStreamMgr:
                         msg.netkey, devkey, msg._src, msg._dst, d)
                     return True
                 except cryptography.exceptions.InvalidTag:
-                    # print('key error')
                     pass
         return False
 
@@ -261,6 +263,7 @@ class MeshContext:
                 self._msgmgr.append(msg)
                 break
         else:
+            # print('not network')
             return None
         
         return key_index, msg
@@ -282,8 +285,31 @@ class MeshContext:
         return Message.UnProvisionedBeacon.from_bytes(data)
 
 
-    def encode_message(self, msg, network_keyIndex=0, app_keyIndex=0):
-        pass
+    def encode_message(self, src:int, dst:int, ttl:int, seq:int, opcode:int, parameters=b'', network_keyIndex=0, app_keyIndex=0):
+        import btmesh.MeshOpcode
+        if opcode > 65535:
+            l = 3
+        elif opcode > 255:
+            l = 2
+        else:
+            l = 1
+        pdu = opcode.to_bytes(l, 'big') + parameters
+        l = len(pdu)
+        if btmesh.MeshOpcode.opcode_is_ctl(opcode):
+            return None
+        else:
+            if l > 100:
+                return None
+                # upper_msg = Message.SegmentAccessMessage(1, self.appkeys[app_keyIndex.aid], 1, seq)
+            else:
+                upper_msg = Message.AccessMessage(1, self.appkeys[app_keyIndex].aid, pdu)
+        
+        netmsg = Message.NetworkMessage(0, ttl, seq, src, dst, upper_msg)
+        nounce = application(src, dst, seq, self.netkeys[network_keyIndex].iv_index)
+        netmsg._UpperMsg._pdu = Util.aes_ccm(self.appkeys[app_keyIndex], nounce, _pdu)
+        # encrypt it
+        return netmsg
+        
 
     def encode_secure_network_beacon(self, network_keyIndex):
         pass

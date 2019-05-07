@@ -30,6 +30,10 @@ from cryptography.hazmat.primitives.ciphers import algorithms, aead, Cipher, mod
 import bitstring
 
 
+__all__ = ['aes_cmac', 'aes_ccm', 'aes_ccm_decrypt', 'aes_ecb',
+            'ApplicationKey', 'NetworkKey', 'DeviceKey',
+            'Addr']
+
 def aes_cmac(k, m):
     c = cmac.CMAC(algorithms.AES(k), backend=default_backend())
     c.update(m)
@@ -181,14 +185,6 @@ class DeviceKey(Key):
     @property
     def key(self):
         return self._key
-
-    # @classmethod
-    # def fromString(cls, s, nodeId=0):
-    #     return cls(bytes.fromhex(s), nodeId)
-
-    # @classmethod
-    # def fromBytes(cls, s, nodeId=0):
-    #     return cls(s, nodeId)
 
 
 class Addr(bytes):

@@ -5,7 +5,12 @@ import uuid
 from functools import lru_cache
 import bitstring
 
-from btmesh.Util import *
+
+__all__ = ['AdvertisingMessage', 'MeshPBADV', 'MeshMessage', 'MeshBeacon', 'MessageType',
+            'ControlMessage', 'SegmentAckMessage', 'SegmentControlMessage',
+            'AccessMessage', 'SegmentAccessMessage', 'get_msg',
+            'NetworkHeader', 'NetworkEncryptedData', 'NetworkMessage',
+            'UnProvisionedBeacon', 'ProvisionedBeacon']
 
 class AdvertisingMessage:
     MESSAGE_STRUCT = 'uint:8, bytes'
@@ -46,6 +51,9 @@ class MessageType:
 class BaseMessage:
     STRUCT = 'bytes'
 
+    def pack(self):
+        return bitstring.pack(self.STRUCT, *self._elements)
+
     @classmethod
     def unpack(cls, data:bytes):
         return bitstring.ConstBitStream(data).unpack(cls.STRUCT)
@@ -59,6 +67,9 @@ class BaseMessage:
     def from_bytes(cls, data:bytes):
         return cls(*(cls.unpack(data)))
 
+    def to_bytes(self):
+        return self.pack().bytes
+
 
 class ControlMessage(BaseMessage):
     STUCT = 'pad:0, uint:7, bytes'
@@ -66,6 +77,7 @@ class ControlMessage(BaseMessage):
         self._opcode = opcode
         self._parameters = parameters
         self._trait = opcode
+        self._elements = (self._opcode, self._parameters)
 
     @property
     def MsgType(self):
@@ -83,6 +95,7 @@ class SegmentAckMessage(BaseMessage):
         self._rfu = rfu
         # this is a bitmap
         self._blockack = blockack
+        self._elements = (obo, seqzero, rfu, blockack)
 
     @property
     def MsgType(self):
@@ -102,6 +115,7 @@ class SegmentControlMessage(BaseMessage):
         self._segO = segO
         self._segN = segN
         self._data = data
+        self._elements = (seg, opcode, rfu, seqzero, segO, segN, data)
 
     @property
     def MsgType(self):
@@ -122,6 +136,7 @@ class AccessMessage(BaseMessage):
         self._akf = akf
         self._aid = aid
         self._pdu = pdu
+        self._elements = (akf, aid, pdu)
 
     @property
     def MsgType(self):
@@ -141,6 +156,7 @@ class SegmentAccessMessage(BaseMessage):
         self._segO = segO
         self._segN = segN
         self._pdu = pdu
+        self._elements = (akf, aid, szmic, seqzero, segO, segN, pdu)
 
     @property
     def MsgType(self):

@@ -4,25 +4,23 @@ from btmesh.Util import *
 
 netkeys = [
     NetworkKey.fromString(
-        '395CF5599D988B6AECEF924D6F840724', iv_index=0, tag='network')
+        'EA82FE14E46D3CDE45A615AD24AFB66E', iv_index=0, tag='network')
 ]
 
 appkeys = [
     ApplicationKey.fromString(
-        '297537E2121446E9DEBCD30F2C843766', iv_index=953, tag='application 1'),
+        '06645D42963E74ECEB5A75CC27FD2C12', iv_index=3300, tag='Generic'),
     ApplicationKey.fromString(
-        'E02CBF7DC54AE7B13A79FEA9FE06CD27', iv_index=865, tag='application 2'),
+        '7F2A2663976242DC0857892C07409B0D', iv_index=136, tag='Setup'),
     ApplicationKey.fromString(
-        '7B05098D194F76F70C490638CD3D9EAD', iv_index=17, tag='application 3'),
+        'A4F84F3A36C326211D9CEE44991A5618', iv_index=3704, tag='Vendor'),
 ]
 
 devkeys = [
     DeviceKey.fromString(
-        '1FFCC17C6411835164769DF36BF8AE01', nodeid=2),
+        'E0CD4044F42C1E221BD4CBB8001737E5', nodeid=2),
     DeviceKey.fromString(
-        '5ABD9DC7F2C43CBE335D47501E04A23F', nodeid=4),
-    DeviceKey.fromString(
-        'DDD0035D1D3AC520E8031700C812BC82', nodeid=6),
+        '8200E049831EF702D003AD7573A2D081', nodeid=4),
 ]
 
 
@@ -48,13 +46,7 @@ def PayloadDecode(s):
 
 
 devices = {
-    "f5:b6:b8:39:e1:88": 2,
-    # "ca:f8:22:f1:4d:f4": 0x0a,
-    # "d2:dc:87:6c:83:5c": 0x0c,
-    # "c4:2b:9d:f7:e0:2f": 0x26,
-    "df:ae:fe:10:f0:25": 0x28,
-    "dd:07:d9:fe:3d:59": 0x2d,
-    "e9:86:a0:bd:83:15": 100,
+    "d1:47:5b:05:73:22": 2,
 }
 
 weights = {}
@@ -82,11 +74,8 @@ def callback(netkey, appkey, src: int, dst: int, opcode: int, parameters: bytes)
             weights[hash_key] /= 2
             weights[hash_key] += rssi / 2
         else:
-            print('find new connection: src %04x to dst %04x rssi %d' %
-                  (src, r_node_id, rssi))
             weights[hash_key] = 1.0 * rssi
-
-        # print(pair, "%.02f"%weights[hash_key])
+        print('%04x <-> %04x : %d' % (src, r_node_id, rssi))
 
 
 with MeshContext(netkeys=netkeys, appkeys=appkeys, devicekeys=devkeys, OnAccessMsg=callback) as ctx:
@@ -122,6 +111,7 @@ with MeshContext(netkeys=netkeys, appkeys=appkeys, devicekeys=devkeys, OnAccessM
                 elif isinstance(packet, MeshBeacon):
                     pass
     except KeyboardInterrupt:
+        print('stopping...')
         pass
     sock.close()
 
@@ -136,7 +126,8 @@ with MeshContext(netkeys=netkeys, appkeys=appkeys, devicekeys=devkeys, OnAccessM
         g.add_edge(node_1, node_2, weight=((128+weight)/128)
                    ** 2, label='%.01f' % weight)
 
-    pos = nx.spectral_layout(g)
+    # pos = nx.spectral_layout(g)
+    pos = nx.spring_layout(g)
     nx.draw(g, pos, with_labels=True)
     labels = nx.get_edge_attributes(g, 'label')
     nx.draw_networkx_edge_labels(g, pos, edge_labels=labels)
