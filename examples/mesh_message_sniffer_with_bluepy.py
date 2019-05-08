@@ -33,8 +33,8 @@ class ScanDelegate(btle.DefaultDelegate):
 
 
 def callback(netkey, appkey, src: int, dst: int, opcode: int, parameters: bytes):
-    print("%04x -> %04x op: %s" %
-          (src, dst, MeshOpcode.opcode_description(opcode)))
+    print("\t%04x -> %04x op: %s data:%s" %
+          (src, dst, MeshOpcode.opcode_description(opcode), ' '.join(map('{:02x}'.format, parameters))))
 
 
 ctx = Context.MeshContext(
