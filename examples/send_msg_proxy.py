@@ -16,5 +16,11 @@ appkeys = [
 ]
 
 with MeshContext(netkeys=netkeys, appkeys=appkeys) as ctx:
-    msg = ctx.encode_message(1, 2, 5, 100, 0x8201)
-    print(msg._UpperMsg.to_bytes().hex())
+    msg = ctx.encode_message(src=1, dst=2, ttl=5, seq=100,
+                             opcode=0x8203, parameters=b'\x00\x00\x00\x00')
+    print(msg.hex())
+    import bluepy
+    dev = bluepy.Peripheral('f2:d5:f3:7d:76:e7', addrType=ADDR_TYPE_RANDOM)
+    service = dev.getServiceByUUID(0x1828)
+    character = service.getCharacteristics(0x2add)[0]
+    character.write(msg)

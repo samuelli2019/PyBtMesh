@@ -226,6 +226,8 @@ class MeshContext:
         iv_index, nid, payload = Message.NetworkMessage.decode(data)
 
         #fast check
+        # print(iv_index, key.iv_index)
+        # print(nid, key.nid)
         if iv_index != (key.iv_index & 0x01) or nid != key.nid & 0x7f:
             return None
 
@@ -257,13 +259,13 @@ class MeshContext:
         for i in range(len(self._netkeys)):
             msg = self._decode_net_msg(data, i)
             if msg is not None:
-                # print(msg._ctl, msg._ttl, msg._seq, "from: %04x" % msg._src, "to: %04x" % msg._dst, msg._UpperMsg)
+                print(msg._ctl, msg._ttl, msg._seq, "from: %04x" % msg._src, "to: %04x" % msg._dst, msg._UpperMsg)
                 key_index = i
                 msg.netkey = self._netkeys[i]
                 self._msgmgr.append(msg)
                 break
         else:
-            # print('not network')
+            print('not network')
             return None
         
         return key_index, msg
@@ -306,9 +308,18 @@ class MeshContext:
         
         netmsg = Message.NetworkMessage(0, ttl, seq, src, dst, upper_msg)
         nounce = application(src, dst, seq, self.netkeys[network_keyIndex].iv_index)
-        netmsg._UpperMsg._pdu = Util.aes_ccm(self.appkeys[app_keyIndex], nounce, _pdu)
-        # encrypt it
-        return netmsg
+        netmsg._UpperMsg._pdu = dst.to_bytes(2, 'big') + upper_msg.to_bytes()[:1] + Util.aes_ccm(self.appkeys[app_keyIndex].key, nounce, pdu)
+
+        net_nounce = network_nounce(0, ttl, src, seq, self.netkeys[network_keyIndex].iv_index)
+        net_pdu = Util.aes_ccm(self.netkeys[network_keyIndex].encrypt_key, net_nounce, netmsg._UpperMsg._pdu)
+
+        _header = Message.NetworkHeader.encode(0, ttl, seq, src)
+        
+        header = header_obfs(_header, self.netkeys[network_keyIndex], net_pdu)
+
+        return bitstring.pack('uint:1, uint:7, bytes, bytes',
+                            self.netkeys[network_keyIndex].iv_index & 1, self.netkeys[network_keyIndex].nid,
+                            header, net_pdu).bytes
         
 
     def encode_secure_network_beacon(self, network_keyIndex):

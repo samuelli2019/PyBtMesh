@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name='PyBtMesh',
-    version='0.1',
+    version='0.1.2',
     description='Python module for bluetooth mesh',
     author='samuelli2019',
     author_email='lijyigac@gmail.com',

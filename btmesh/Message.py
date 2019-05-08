@@ -50,6 +50,7 @@ class MessageType:
 
 class BaseMessage:
     STRUCT = 'bytes'
+    _elements = ()
 
     def pack(self):
         return bitstring.pack(self.STRUCT, *self._elements)
@@ -190,6 +191,10 @@ class NetworkHeader:
     @classmethod
     def decode(cls, b):
         return bitstring.BitStream(b).unpack(cls.NETWORK_HEADER_STRUCT)
+
+    @classmethod
+    def encode(cls, ctl, ttl, seq, src):
+        return bitstring.pack(cls.NETWORK_HEADER_STRUCT, ctl, ttl, seq, src).bytes
 
 class NetworkEncryptedData:
     NETWORK_ENCRYPTED_STRUCT = 'uintbe:16, bytes'
