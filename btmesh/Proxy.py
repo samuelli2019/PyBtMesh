@@ -1,7 +1,7 @@
 import bitstring
 
 
-class Proxy:
+class ProxyEncoder:
     STRUCT = 'uint:2, uint:6, bytes'
     SAR_COMPLETE = 0x00
     SAR_FIRST = 0x01
@@ -16,7 +16,7 @@ class Proxy:
     def __init__(self, mtu: int):
         self._mtu = mtu
 
-    def encode(self, data, data_type=Proxy.TYPE_NETWORK):
+    def encode(self, data, data_type=TYPE_NETWORK):
         if len(data) < self._mtu:
             yield bitstring.pack(self.STRUCT, self.SAR_COMPLETE, data_type, data).bytes
         else:

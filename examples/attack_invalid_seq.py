@@ -1,3 +1,5 @@
+import time
+import os
 from btmesh.Context import *
 from btmesh.Util import *
 from btmesh.Message import *
@@ -14,16 +16,6 @@ appkeys = [
         'FCB937EAE46DFF7E04DE63C08746F5CA', iv_index=663, tag='Setup'),
     ApplicationKey.fromString(
         '5ECB8B26A3B24130B4F088DD701FD929', iv_index=3720, tag='Vendor'),
-]
-
-
-devkeys = [
-    DeviceKey.fromString(
-        '1FFCC17C6411835164769DF36BF8AE01', nodeid=2),
-    DeviceKey.fromString(
-        '5ABD9DC7F2C43CBE335D47501E04A23F', nodeid=4),
-    DeviceKey.fromString(
-        'DDD0035D1D3AC520E8031700C812BC82', nodeid=6),
 ]
 
 
@@ -48,7 +40,37 @@ def PayloadDecode(s):
     return packet_list
 
 
-with MeshContext(netkeys=netkeys, appkeys=appkeys, devicekeys=devkeys) as ctx:
+def bin_to_hex_str(s): return ' '.join(map('{:02x}'.format, s))
+
+
+output_position = '>/dev/null'
+# output_position = ''
+
+
+def callback(netkey, appkey, src: int, dst: int, opcode: int, parameters: bytes):
+    msg = ctx.encode_message(src=src, dst=dst, ttl=63, seq=0xffffff,
+                             opcode=opcode, parameters=parameters, app_keyIndex=0)
+    print(msg.hex())
+
+    ctx.decode_message(msg)
+
+    os.system('hcitool -i hci0 cmd 0x08 0x000a 00 ' + output_position)
+    fixed_header = 'hcitool -i hci0 cmd 0x08 0x0008 '
+    pdu_len = len(msg) + 1
+    all_pdu_len = pdu_len + 1
+    parameter = bytes([all_pdu_len] + [pdu_len] + [0x2a]) + msg
+    parameter = parameter.ljust(32, b'\x00')
+    cmd1 = fixed_header + bin_to_hex_str(parameter) + output_position
+    # cmd2 = 'hciconfig hci0 leadv 3'
+    os.system(cmd1)
+    os.system(
+        'hcitool -i hci0 cmd 0x08 0x0006 a0 00 a0 00 03 00 00 00 00 00 00 00 00 07 00 ' + output_position)
+    os.system('hcitool -i hci0 cmd 0x08 0x000a 01 ' + output_position)
+    time.sleep(0.3)
+    os.system('hcitool -i hci0 cmd 0x08 0x000a 00 ' + output_position)
+
+
+with MeshContext(netkeys=netkeys, appkeys=appkeys, OnAccessMsg=callable) as ctx:
     import socket
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
