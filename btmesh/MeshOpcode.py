@@ -412,4 +412,9 @@ def opcode_description(opcode):
     for res, method, op, ack in application_opcode:
         if op == opcode:
             return res + method
-    return "Not Found"
+    if opcode > 0xffff:
+        return '%06x' % opcode
+    elif opcode > 0xff:
+        return '%04x' % opcode
+    else:
+        return '%02x' % opcode

@@ -16,8 +16,9 @@ TODO List:
 - [x] decrypt network message
 - [x] decrypt application message
 - [x] decrypt/decode mesh beacon
+- [x] encrypt simple access message
 - [ ] complete class of message
-- [ ] mesh sniffer using bluepy and pybluez
+- [x] mesh sniffer using bluepy
 - [ ] example of network enumerator
 - [ ] improve compatibility
 - [ ] proxy support
