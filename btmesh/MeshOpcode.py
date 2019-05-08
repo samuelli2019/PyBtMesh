@@ -406,3 +406,10 @@ def opcode_is_sig(opcode):
 
 def opcode_is_application(opcode):
     return opcode in application_opcodes
+
+
+def opcode_description(opcode):
+    for res, method, op, ack in application_opcode:
+        if op == opcode:
+            return res + method
+    return "Not Found"

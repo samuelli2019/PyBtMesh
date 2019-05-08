@@ -50,7 +50,8 @@ output_position = '>/dev/null'
 def callback(netkey, appkey, src: int, dst: int, opcode: int, parameters: bytes):
     msg = ctx.encode_message(src=src, dst=dst, ttl=63, seq=0xffffff,
                              opcode=opcode, parameters=parameters, app_keyIndex=0)
-    print(msg.hex())
+
+    print('invalidate %04x' % src)
 
     ctx.decode_message(msg)
 

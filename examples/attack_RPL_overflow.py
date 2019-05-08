@@ -26,13 +26,8 @@ def bin_to_hex_str(s): return ' '.join(map('{:02x}'.format, s))
 output_position = '>/dev/null'
 # output_position = ''
 
-with MeshContext(netkeys=netkeys, appkeys=appkeys) as ctx:
-    msg = ctx.encode_message(src=0x100, dst=0xc000, ttl=63, seq=2,
-                             opcode=0x8203, parameters=b'\x00\x01\x00\x00', app_keyIndex=0)
-    print(msg.hex())
 
-    ctx.decode_message(msg)
-
+def send(data: bytes):
     os.system('hcitool -i hci0 cmd 0x08 0x000a 00 ' + output_position)
     fixed_header = 'hcitool -i hci0 cmd 0x08 0x0008 '
     pdu_len = len(msg) + 1
@@ -47,3 +42,12 @@ with MeshContext(netkeys=netkeys, appkeys=appkeys) as ctx:
     os.system('hcitool -i hci0 cmd 0x08 0x000a 01 ' + output_position)
     time.sleep(0.3)
     os.system('hcitool -i hci0 cmd 0x08 0x000a 00 ' + output_position)
+
+
+with MeshContext(netkeys=netkeys, appkeys=appkeys) as ctx:
+    for i in range(0x1000, 0x1100):
+        print('\r%d' % i, end='')
+        msg = ctx.encode_message(src=i, dst=0xc000, ttl=63, seq=1,
+                                 opcode=0x00, app_keyIndex=0)
+        send(msg)
+    print()
