@@ -191,10 +191,11 @@ class MessageStreamMgr:
         
 
 class MeshContext:
-    def __init__(self, netkeys=[], appkeys=[], devicekeys=[], OnAccessMsg=None):
+    def __init__(self, netkeys=[], appkeys=[], devicekeys=[],OnNetworkMsg=None , OnAccessMsg=None):
         self._netkeys = netkeys
         self._appkeys = appkeys
         self._devicekeys = devicekeys
+        self._on_network_msg = OnNetworkMsg
         self._msgmgr = MessageStreamMgr(self, OnMessageCb=OnAccessMsg)
 
     @property
@@ -259,18 +260,20 @@ class MeshContext:
         for i in range(len(self._netkeys)):
             msg = self._decode_net_msg(data, i)
             if msg is not None:
-                print(msg._ctl, msg._ttl, msg._seq, "from: %04x" % msg._src, "to: %04x" % msg._dst, msg._UpperMsg)
+                if self._on_network_msg is not None:
+                    self._on_network_msg(i, msg)
+                # print(msg._ctl, msg._ttl, msg._seq, "from: %04x" % msg._src, "to: %04x" % msg._dst, msg._UpperMsg)
                 key_index = i
                 msg.netkey = self._netkeys[i]
                 self._msgmgr.append(msg)
                 break
         else:
-            print('not network')
+            # print('not network')
             return None
         
         return key_index, msg
 
-    def decode_secure_network_beacon(self, data):
+    def decode_secure_network_beacon(self, data:bytes):
         beacon = Message.ProvisionedBeacon.from_bytes(data)
         def get_auth(flags: int, networkid: bytes, ivindex: int, key: Util.NetworkKey):
             temp = bitstring.pack('uint:8, bytes:8, uintbe:32',
@@ -283,7 +286,7 @@ class MeshContext:
         else:
             return -1, beacon
 
-    def decode_unprovisioned_network_beacon(self, data):
+    def decode_unprovisioned_network_beacon(self, data:bytes):
         return Message.UnProvisionedBeacon.from_bytes(data)
 
 
