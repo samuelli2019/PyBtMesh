@@ -409,9 +409,9 @@ def opcode_is_application(opcode):
 
 
 def opcode_description(opcode):
-    for res, method, op, ack in application_opcode:
+    for res, method, op, _ in application_opcode:
         if op == opcode:
-            return res + method
+            return res + ' ' + method
     if opcode > 0xffff:
         return '%06x' % opcode
     elif opcode > 0xff:
