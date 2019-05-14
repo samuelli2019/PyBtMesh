@@ -395,6 +395,20 @@ application_opcode = [
 
 application_opcodes = [op[1] for op in application_opcode]
 
+# TODO: access opcode class
+
+
+class AccessOpcode(int):
+    @property
+    def description(self):
+        return opcode_description(self)
+
+# TODO: control opcode class
+
+
+class ControlOpcode(int):
+    pass
+
 
 def opcode_is_ctl(opcode):
     return opcode in control_opcodes

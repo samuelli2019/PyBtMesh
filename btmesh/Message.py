@@ -6,6 +6,7 @@ from functools import lru_cache
 from typing import List
 import bitstring
 from btmesh import Util
+from btmesh import MeshOpcode
 
 
 __all__ = ['AdvertisingMessage', 'MeshPBADV', 'MeshMessage', 'MeshBeacon', 'MessageType',
@@ -238,7 +239,16 @@ class AccessObject(UpperObject):
         :param opcode: opcode for message
         :param parameters: parameters for message
     """
-    pass
+    def __init__(self, opcode:MeshOpcode.AccessOpcode, parameters:bytes=b''):
+        self._opcode = opcode
+        self._parameters = parameters
+
+    def encode(self, key: Util.Key, nounce: bytes) -> bytes:
+        pass
+
+    @classmethod
+    def from_bytes(cls, data: bytes, key: Util.Key):
+        pass
 
 class ControlObject(UpperObject):
     """
@@ -247,7 +257,9 @@ class ControlObject(UpperObject):
         :param opcode: opcode for message
         :param parameters: parameters for message
     """
-    pass
+    def __init__(self, opcode:MeshOpcode.ControlOpcode, parameters:bytes=b''):
+        self._opcode = opcode
+        self._parameters = parameters
 
 class AckObject(UpperObject):
     """
@@ -312,6 +324,16 @@ class DecodeResult:
     Ack = 3
     SegmentAccess = 4
     SegmentControl = 5
+
+class NetworkHeaderObject(dict):
+    def __init__(self, src: int, dst: int, ttl: int, seq: int, ctl: bool):
+        dict.__init__(self, {
+            'src': src,
+            'dst': dst,
+            'ttl': ttl,
+            'seq': seq,
+            'ctl': ctl,
+        })
 
 class NetworkObject:
     """
