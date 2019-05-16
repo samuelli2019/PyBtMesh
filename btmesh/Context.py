@@ -38,12 +38,15 @@ class MessageStream:
         pass
 
 class MessageStreamMgr:
-    def __init__(self, context, OnMessageCb=None):
+    def __init__(self, context, OnAccessMsgCb=None, OnControlMsgCb=None):
         self._streams = dict()
         self._ctx = context
         def _caller(netkey, appkey, src:int, dst:int, opcode:int, parameters:bytes):
-            print("from: %04x to: %04x opcode: %x" % (src, dst, opcode), 'parameter:', ' '.join(map('{:02x}'.format, parameters)))
-        self._on_msg = _caller if OnMessageCb is None else OnMessageCb
+            print("from %04x to %04x opcode: %x" % (src, dst, opcode), 'parameter:', ' '.join(map('{:02x}'.format, parameters)))
+        self._on_access_msg = _caller if OnAccessMsgCb is None else OnAccessMsgCb
+        def _ctl_caller(netkey, src: int, dst: int, opcode: int, parameters: bytes):
+            print("from %04x to %04x control opcode: %x" % (src, dst, opcode), 'parameter:', ' '.join(map('{:02x}'.format, parameters)))
+        self._on_control_msg = _ctl_caller if OnControlMsgCb is None else OnControlMsgCb
 
     def _access_caller(self, netkey, appkey, src: int, dst: int, payload: bytes):
         t = payload[0]
@@ -58,10 +61,10 @@ class MessageStreamMgr:
         elif t & 0xc0 == 0xc0:
             opcode = int.from_bytes(payload[:3], 'big')
             parameters = payload[3:]
-        self._on_msg(netkey, appkey, src, dst, opcode, parameters)
+        self._on_access_msg(netkey, appkey, src, dst, opcode, parameters)
 
-    def _contol_caller(self):
-        pass
+    def _contol_caller(self, netkey, src:int, dst:int, opcode:int,parameters:bytes):
+        self._on_control_msg(netkey, src, dst, opcode, parameters)
 
     def _ack_caller(self):
         pass
@@ -84,7 +87,7 @@ class MessageStreamMgr:
                     return True
                 except cryptography.exceptions.InvalidTag:
                     pass
-        print('not decrypted')
+        # print('not decrypted')
         return False
 
     def _decode_devdata(self, msg, data, szmic=False, seqauth=None):
@@ -93,10 +96,10 @@ class MessageStreamMgr:
                 try:
                     nounce = None
                     if seqauth is not None:
-                        nounce = application(msg._src, msg._dst, seqauth,
+                        nounce = device_nounce(msg._src, msg._dst, seqauth,
                                              msg.netkey.iv_index, szmic)
                     else:
-                        nounce = application(msg._src, msg._dst, msg._seq,
+                        nounce = device_nounce(msg._src, msg._dst, msg._seq,
                                              msg.netkey.iv_index, szmic)
                     d = Util.aes_ccm_decrypt(devkey.key, nounce, data)
 
@@ -104,43 +107,48 @@ class MessageStreamMgr:
                         msg.netkey, devkey, msg._src, msg._dst, d)
                     return True
                 except cryptography.exceptions.InvalidTag:
-                    pass
+                    # print('decode error')
+                    # print(data.hex())
+                    return False
         return False
 
     def do_parse(self, trait):
         msgs = self._streams[trait]
 
         if isinstance(msgs[0]._UpperMsg, Message.ControlMessage):
-            print(msgs[0]._UpperMsg)
-            self._on_msg(msgs[0]._UpperMsg)
+            # print(msgs[0]._UpperMsg)
+            self._on_control_msg(msgs[0].netkey, msgs[0].src, msgs[0].dst, msgs[0]._UpperMsg)
         elif isinstance(msgs[0]._UpperMsg, Message.SegmentAccessMessage):
             if len(msgs) >= msgs[0]._UpperMsg._segN:
                 slots = list(range(msgs[0]._UpperMsg._segN+1))
                 
                 seq_list = []
+                trait_list = []
                 for msg in msgs:
                     seq_list.append(msg._seq - msg._UpperMsg._segO)
+                    trait_list.append(msg.trait)
                     slots[msg._UpperMsg._segO] = msg._UpperMsg._pdu
                 # check is all data received
                 for i in range(len(slots)):
                     if isinstance(slots[i], int):
-                        print('not complement: ', ''.join(map(lambda c:'*' if isinstance(c, int) else '.', slots)))
+                        # print('not complement: ', ''.join(map(lambda c:'*' if isinstance(c, int) else '.', slots)))
                         return
                 iv_index_0 = msgs[0].netkey.iv_index
-                seq_0 = msgs[0]._UpperMsg._segO
-                mask = seqauth = (iv_index_0 << 24) | seq_0
-                mask &= 0xffc00
-                seqauth = mask | msgs[0]._UpperMsg._seqzero
-                
-                seq_0 = min(seq_list)
+                seq_0 = min(seq_list) & 0x3fff
+                mask = (iv_index_0 << 24)
+                mask &= 0xfc000
+                seqauth = mask | seq_0
+                # print(msgs[0]._seq)
+                # print(trait_list)
+                # print(seq_list, iv_index_0, hex(seqauth))
                 data = b''.join(slots)
-                seqauth = seq_0
+                # seqauth = seq_0
                 if msgs[0]._UpperMsg._akf == 1:
-                    if self._decode_appdata(msgs[0], data, msg._UpperMsg._szmic, seqauth):
-                        del self._streams[trait]
+                    self._decode_appdata(msgs[0], data, msg._UpperMsg._szmic, seqauth)
+                    del self._streams[trait]
                 else:
-                    if self._decode_devdata(msgs[0], data, True, seqauth):
-                        del self._streams[trait]
+                    self._decode_devdata(msgs[0], data, msg._UpperMsg._szmic, seqauth)
+                    del self._streams[trait]
 
         elif isinstance(msgs[0]._UpperMsg, Message.AccessMessage):
             data = msgs[0]._UpperMsg._pdu
@@ -152,11 +160,11 @@ class MessageStreamMgr:
                     del self._streams[trait]
 
             
-        elif isinstance(msgs[0]._UpperMsg, Message.SegmentAccessMessage):
-            print(msgs[0]._UpperMsg)
-            self._contol_caller()
+        elif isinstance(msgs[0]._UpperMsg, Message.SegmentControlMessage):
+            # print(msgs[0]._UpperMsg)
+            self._contol_caller(msgs[0].netkey, msgs[0].src, msgs[0].dst, msgs[0]._UpperMsg._opcode, msgs[0]._UpperMsg._parameters)
         elif isinstance(msgs[0]._UpperMsg, Message.SegmentAckMessage):
-            print(msgs[0]._UpperMsg)
+            # print(msgs[0]._UpperMsg)
             self._ack_caller()
 
     def get_app_key(self, msg: Message.NetworkMessage):
@@ -191,12 +199,12 @@ class MessageStreamMgr:
         
 
 class MeshContext:
-    def __init__(self, netkeys=[], appkeys=[], devicekeys=[],OnNetworkMsg=None , OnAccessMsg=None):
+    def __init__(self, netkeys=[], appkeys=[], devicekeys=[],OnNetworkMsg=None , OnAccessMsg=None, OnControlMsg=None):
         self._netkeys = netkeys
         self._appkeys = appkeys
         self._devicekeys = devicekeys
         self._on_network_msg = OnNetworkMsg
-        self._msgmgr = MessageStreamMgr(self, OnMessageCb=OnAccessMsg)
+        self._msgmgr = MessageStreamMgr(self, OnAccessMsgCb=OnAccessMsg, OnControlMsgCb=OnControlMsg)
 
     @property
     def netkeys(self):
@@ -263,6 +271,7 @@ class MeshContext:
                 if self._on_network_msg is not None:
                     self._on_network_msg(i, msg)
                 # print(msg._ctl, msg._ttl, msg._seq, "from: %04x" % msg._src, "to: %04x" % msg._dst, msg._UpperMsg)
+                    # print(data.hex())
                 key_index = i
                 msg.netkey = self._netkeys[i]
                 self._msgmgr.append(msg)

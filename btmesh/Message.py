@@ -169,7 +169,7 @@ class SegmentAccessMessage(BaseMessage):
     @property
     @lru_cache(maxsize=1)
     def trait(self):
-        return "%d %d %x %d" % (self._akf, self._aid, self._seqzero, self._segN)
+        return "%d %d %d %d" % (self._akf, self._aid, self._seqzero, self._segN)
 
     def __str__(self):
         return "Segment Message: %d of %d" % (self._segO, self._segN)
@@ -188,87 +188,87 @@ def get_msg(ctl, data:bytes):
     else:
         return SegmentAccessMessage.from_bytes(data)
 
-class UpperObject:
-    """
-        Upper Message Defination
+# class UpperObject:
+#     """
+#         Upper Message Defination
 
-        :param opcode: opcode for message
-        :param parameters: parameters for message
-    """
-    def __init__(self, opcode:int, parameters:bytes=b''):
-        self._opcode = opcode
-        self._parameters = parameters
+#         :param opcode: opcode for message
+#         :param parameters: parameters for message
+#     """
+#     def __init__(self, opcode:int, parameters:bytes=b''):
+#         self._opcode = opcode
+#         self._parameters = parameters
 
-    @property
-    def opcode(self):
-        return self._opcode
+#     @property
+#     def opcode(self):
+#         return self._opcode
     
-    @property
-    def parameters(self):
-        return self._parameters
+#     @property
+#     def parameters(self):
+#         return self._parameters
 
-    def parameter_struct(self, struct:str):
-        return bitstring.ConstBitStream.unpack(self._parameters, struct)
+#     def parameter_struct(self, struct:str):
+#         return bitstring.ConstBitStream.unpack(self._parameters, struct)
 
-    @classmethod
-    def from_bytes(cls, payload: bytes):
-        """
-            Create Access Message or Control Message from bytes
+#     @classmethod
+#     def from_bytes(cls, payload: bytes):
+#         """
+#             Create Access Message or Control Message from bytes
 
-            :param payload: bytes-like object combinated with opcode and parameters.
-        """
-        t = payload[0]
-        opcode = None
-        parameters = b''
-        if t & 0x80 == 0x00:
-            opcode = payload[0]
-            parameters = payload[1:]
-        elif t & 0xc0 == 0x80:
-            opcode = int.from_bytes(payload[:2], 'big')
-            parameters = payload[2:]
-        elif t & 0xc0 == 0xc0:
-            opcode = int.from_bytes(payload[:3], 'big')
-            parameters = payload[3:]
+#             :param payload: bytes-like object combinated with opcode and parameters.
+#         """
+#         t = payload[0]
+#         opcode = None
+#         parameters = b''
+#         if t & 0x80 == 0x00:
+#             opcode = payload[0]
+#             parameters = payload[1:]
+#         elif t & 0xc0 == 0x80:
+#             opcode = int.from_bytes(payload[:2], 'big')
+#             parameters = payload[2:]
+#         elif t & 0xc0 == 0xc0:
+#             opcode = int.from_bytes(payload[:3], 'big')
+#             parameters = payload[3:]
         
-        return cls(opcode, parameters)
+#         return cls(opcode, parameters)
 
-class AccessObject(UpperObject):
-    """
-        Access Message Defination
+# class AccessObject(UpperObject):
+#     """
+#         Access Message Defination
 
-        :param opcode: opcode for message
-        :param parameters: parameters for message
-    """
-    def __init__(self, opcode:MeshOpcode.AccessOpcode, parameters:bytes=b''):
-        self._opcode = opcode
-        self._parameters = parameters
+#         :param opcode: opcode for message
+#         :param parameters: parameters for message
+#     """
+#     def __init__(self, opcode:MeshOpcode.AccessOpcode, parameters:bytes=b''):
+#         self._opcode = opcode
+#         self._parameters = parameters
 
-    def encode(self, key: Util.Key, nounce: bytes) -> bytes:
-        pass
+#     def encode(self, key: Util.Key, nounce: bytes) -> bytes:
+#         pass
 
-    @classmethod
-    def from_bytes(cls, data: bytes, key: Util.Key):
-        pass
+#     @classmethod
+#     def from_bytes(cls, data: bytes, key: Util.Key):
+#         pass
 
-class ControlObject(UpperObject):
-    """
-        Control Message Defination
+# class ControlObject(UpperObject):
+#     """
+#         Control Message Defination
 
-        :param opcode: opcode for message
-        :param parameters: parameters for message
-    """
-    def __init__(self, opcode:MeshOpcode.ControlOpcode, parameters:bytes=b''):
-        self._opcode = opcode
-        self._parameters = parameters
+#         :param opcode: opcode for message
+#         :param parameters: parameters for message
+#     """
+#     def __init__(self, opcode:MeshOpcode.ControlOpcode, parameters:bytes=b''):
+#         self._opcode = opcode
+#         self._parameters = parameters
 
-class AckObject(UpperObject):
-    """
-        Control ACK Message Defination
+# class AckObject(UpperObject):
+#     """
+#         Control ACK Message Defination
 
-        :param opcode: opcode for message
-        :param parameters: parameters for message
-    """
-    pass
+#         :param opcode: opcode for message
+#         :param parameters: parameters for message
+#     """
+#     pass
 
 class NetworkHeader:
     NETWORK_HEADER_STRUCT = 'uint:1, uint:7, uintbe:24, uintbe:16'
@@ -314,86 +314,76 @@ class NetworkMessage:
     def decode(cls, data:bytes):
         return bitstring.BitStream(data).unpack(cls.NETWORK_MESSAGE_STRUCT)
 
-class SAR:
-    pass
+# class SAR:
+#     pass
 
-class DecodeResult:
-    Error = 0
-    Access = 1
-    Control = 2
-    Ack = 3
-    SegmentAccess = 4
-    SegmentControl = 5
+# class DecodeResult:
+#     Error = 0
+#     Access = 1
+#     Control = 2
+#     Ack = 3
+#     SegmentAccess = 4
+#     SegmentControl = 5
 
-class NetworkHeaderObject(dict):
-    def __init__(self, src: int, dst: int, ttl: int, seq: int, ctl: bool):
-        dict.__init__(self, {
-            'src': src,
-            'dst': dst,
-            'ttl': ttl,
-            'seq': seq,
-            'ctl': ctl,
-        })
+# class NetworkObject:
+    # """
+    #     Network Message Difination
 
-class NetworkObject:
-    """
-        Network Message Difination
+    #     :param src: Source Address. Range from 0x0000 to 0xffff.
+    #     :param dst: Destination Address. Range from 0x0000 to 0xffff.
+    #     :param ttl: Time to Live.
+    #     :param seq: Sequence of packet. Range from 0x000000 to 0xffffff.
+    #     :param payload: bytes-like object
+    # """
+    # def __init__(self, src: int, dst: int, ttl: int, seq: int, payload: bytes):
+    #     self._src = src
+    #     self._dst = dst
+    #     self._ttl = ttl
+    #     self._seq = seq
+    #     self._payload = payload
 
-        :param src: Source Address. Range from 0x0000 to 0xffff.
-        :param dst: Destination Address. Range from 0x0000 to 0xffff.
-        :param ttl: Time to Live.
-        :param seq: Sequence of packet. Range from 0x000000 to 0xffffff.
-        :param payload: bytes-like object
-    """
-    def __init__(self, src: int, dst: int, ttl: int, seq: int, payload: bytes):
-        self._src = src
-        self._dst = dst
-        self._ttl = ttl
-        self._seq = seq
-        self._payload = payload
+    # @property
+    # def src(self):
+    #     return self._src
 
-    @property
-    def src(self):
-        return self._src
+    # @property
+    # def dst(self):
+    #     return self._dst
 
-    @property
-    def dst(self):
-        return self._dst
+    # @property
+    # def ttl(self):
+    #     return self._ttl
 
-    @property
-    def ttl(self):
-        return self._ttl
+    # @property
+    # def seq(self):
+    #     return self._seq
 
-    @property
-    def seq(self):
-        return self._seq
+    # @property
+    # def payload(self):
+    #     return self._payload
 
-    @property
-    def payload(self):
-        return self._payload
+    # def encode(self, netkey: Util.NetworkKey, appkey: Util.ApplicationKey=None, devkey: Util.DeviceKey=None) -> List[bytes]:
+    #     """
+    #         Encode message to bytes
 
-    def encode(self, netkey: Util.NetworkKey, appkey: Util.ApplicationKey=None, devkey: Util.DeviceKey=None) -> List[bytes]:
-        """
-            Encode message to bytes
+    #         :param netkey: network key to use.
+    #         :param appkey: application key to use.
+    #         :param devkey: device key to use.
+    #     """
+    #     assert appkey or devkey is None
+    #     pass
 
-            :param netkey: network key to use.
-            :param appkey: application key to use.
-            :param devkey: device key to use.
-        """
-        assert appkey or devkey is None
-        pass
+    # @classmethod
+    # def decode(cls, data: bytes, netkey:Util.NetworkKey, upperkey:Util.Key) -> NetworkObject:
+    #     """
+    #         Decode some bytes-like object to Network Message Object
 
-    @classmethod
-    def decode(cls, data: bytes, netkey:Util.NetworkKey, upperkey:Util.Key) -> NetworkObject:
-        """
-            Decode some bytes-like object to Network Message Object
+    #         :param data: bytes-like object.
+    #         :param upperkey: application key or device key.
 
-            :param data: bytes-like object.
-            :param upperkey: application key or device key.
-
-            :return: network object list
-        """
-        pass
+    #         :return: network object list
+    #     """
+    #     pass
 
 class UnProvisionedBeacon:
     UNPROVISIONED_BEACON_STRUCT = 'uint:8, bytes:16, uintbe:16, bytes'
