@@ -27,7 +27,7 @@ output_position = '>/dev/null'
 # output_position = ''
 
 with MeshContext(netkeys=netkeys, appkeys=appkeys) as ctx:
-    msg = ctx.encode_message(src=0x100, dst=0xc000, ttl=63, seq=2,
+    msg = ctx.encode_message(src=0x101, dst=0xc000, ttl=63, seq=2,
                              opcode=0x8203, parameters=b'\x00\x01\x00\x00', app_keyIndex=0)
     print(msg.hex())
 
