@@ -69,6 +69,9 @@ class BaseMessage:
 
     @classmethod
     def from_bytes(cls, data:bytes):
+        if cls == ControlMessage:
+            print(data.hex())
+            print((cls.unpack(data)))
         return cls(*(cls.unpack(data)))
 
     def to_bytes(self):
