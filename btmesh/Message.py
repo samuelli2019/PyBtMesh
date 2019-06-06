@@ -69,17 +69,21 @@ class BaseMessage:
 
     @classmethod
     def from_bytes(cls, data:bytes):
-        if cls == ControlMessage:
-            print(data.hex())
-            print((cls.unpack(data)))
-        return cls(*(cls.unpack(data)))
+        # if cls == ControlMessage:
+        #     print(data.hex())
+        #     print((cls.unpack(data)))
+        # return cls(*(cls.unpack(data)))
+        try:
+            return cls(*(cls.unpack(data)))
+        except:
+            print("what happened?", data.hex())
 
     def to_bytes(self):
         return self.pack().bytes
 
 
 class ControlMessage(BaseMessage):
-    STUCT = 'pad:0, uint:7, bytes'
+    STUCT = 'pad:1, uint:7, bytes'
     def __init__(self, opcode:int, parameters:bytes):
         self._opcode = opcode
         self._parameters = parameters

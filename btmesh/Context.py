@@ -92,7 +92,7 @@ class MessageStreamMgr:
 
     def _decode_devdata(self, msg, data, szmic=False, seqauth=None):
         for devkey in self._ctx.devicekeys:
-            if devkey._nodeid == msg._dst:
+            if devkey._nodeid == msg._dst or devkey._nodeid == msg._src:
                 try:
                     nounce = None
                     if seqauth is not None:
@@ -118,6 +118,7 @@ class MessageStreamMgr:
         if isinstance(msgs[0]._UpperMsg, Message.ControlMessage):
             # print(msgs[0]._UpperMsg)
             self._on_control_msg(msgs[0].netkey, msgs[0].src, msgs[0].dst, msgs[0]._UpperMsg)
+            self._on_control_msg(msgs[0].netkey, msgs[0]._src, msgs[0]._dst, msgs[0]._UpperMsg._opcode, msgs[0]._UpperMsg._parameters)
         elif isinstance(msgs[0]._UpperMsg, Message.SegmentAccessMessage):
             if len(msgs) >= msgs[0]._UpperMsg._segN:
                 slots = list(range(msgs[0]._UpperMsg._segN+1))
@@ -134,15 +135,16 @@ class MessageStreamMgr:
                         # print('not complement: ', ''.join(map(lambda c:'*' if isinstance(c, int) else '.', slots)))
                         return
                 iv_index_0 = msgs[0].netkey.iv_index
-                seq_0 = min(seq_list) & 0x3fff
-                mask = (iv_index_0 << 24)
-                mask &= 0xfc000
-                seqauth = mask | seq_0
+                # seq_0 = min(seq_list) & 0x3fff
+                # mask = (iv_index_0 << 24)
+                # mask &= 0xfc000
+                # seqauth = mask | seq_0
                 # print(msgs[0]._seq)
                 # print(trait_list)
                 # print(seq_list, iv_index_0, hex(seqauth))
                 data = b''.join(slots)
                 # seqauth = seq_0
+                seqauth = min(seq_list)
                 if msgs[0]._UpperMsg._akf == 1:
                     self._decode_appdata(msgs[0], data, msg._UpperMsg._szmic, seqauth)
                     del self._streams[trait]
@@ -182,7 +184,7 @@ class MessageStreamMgr:
                     return True
             else:
                 for devkey in self._ctx.devicekeys:
-                    if devkey._nodeid == msg._dst:
+                    if devkey._nodeid == msg._dst or devkey._nodeid == msg._src:
                         return True
         return False
 
@@ -299,7 +301,7 @@ class MeshContext:
         return Message.UnProvisionedBeacon.from_bytes(data)
 
 
-    def encode_message(self, src:int, dst:int, ttl:int, seq:int, opcode:int, parameters=b'', network_keyIndex=0, app_keyIndex=0):
+    def encode_message(self, src:int, dst:int, ttl:int, seq:int, opcode:int, parameters=b'', network_keyIndex=0, app_keyIndex=0, devkey_index=None):
         import btmesh.MeshOpcode
         if opcode > 65535:
             l = 3
@@ -316,11 +318,20 @@ class MeshContext:
                 return None
                 # upper_msg = Message.SegmentAccessMessage(1, self.appkeys[app_keyIndex.aid], 1, seq)
             else:
-                upper_msg = Message.AccessMessage(1, self.appkeys[app_keyIndex].aid, pdu)
+                if devkey_index is None:
+                    upper_msg = Message.AccessMessage(1, self.appkeys[app_keyIndex].aid, pdu)
+                else:
+                    upper_msg = Message.AccessMessage(0, 0, pdu)
         
         netmsg = Message.NetworkMessage(0, ttl, seq, src, dst, upper_msg)
         nounce = application(src, dst, seq, self.netkeys[network_keyIndex].iv_index)
-        netmsg._UpperMsg._pdu = dst.to_bytes(2, 'big') + upper_msg.to_bytes()[:1] + Util.aes_ccm(self.appkeys[app_keyIndex].key, nounce, pdu)
+
+        if devkey_index is None:
+            netmsg._UpperMsg._pdu = dst.to_bytes(2, 'big') + upper_msg.to_bytes()[:1] + Util.aes_ccm(self.appkeys[app_keyIndex].key, nounce, pdu)
+        else:
+            nounce = device_nounce(src, dst, seq, self.netkeys[network_keyIndex].iv_index)
+            netmsg._UpperMsg._pdu = dst.to_bytes(2, 'big') + upper_msg.to_bytes()[:1] + Util.aes_ccm(self.devkeys[devkey_index].key, nounce, pdu)
+
 
         net_nounce = network_nounce(0, ttl, src, seq, self.netkeys[network_keyIndex].iv_index)
         net_pdu = Util.aes_ccm(self.netkeys[network_keyIndex].encrypt_key, net_nounce, netmsg._UpperMsg._pdu)
