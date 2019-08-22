@@ -87,7 +87,6 @@ class MessageStreamMgr:
                     return True
                 except cryptography.exceptions.InvalidTag:
                     pass
-        # print('not decrypted')
         return False
 
     def _decode_devdata(self, msg, data, szmic=False, seqauth=None):
@@ -107,8 +106,6 @@ class MessageStreamMgr:
                         msg.netkey, devkey, msg._src, msg._dst, d)
                     return True
                 except cryptography.exceptions.InvalidTag:
-                    # print('decode error')
-                    # print(data.hex())
                     return False
         return False
 
@@ -116,7 +113,6 @@ class MessageStreamMgr:
         msgs = self._streams[trait]
 
         if isinstance(msgs[0]._UpperMsg, Message.ControlMessage):
-            # print(msgs[0]._UpperMsg)
             self._on_control_msg(msgs[0].netkey, msgs[0].src, msgs[0].dst, msgs[0]._UpperMsg)
             self._on_control_msg(msgs[0].netkey, msgs[0]._src, msgs[0]._dst, msgs[0]._UpperMsg._opcode, msgs[0]._UpperMsg._parameters)
         elif isinstance(msgs[0]._UpperMsg, Message.SegmentAccessMessage):
@@ -132,7 +128,6 @@ class MessageStreamMgr:
                 # check is all data received
                 for i in range(len(slots)):
                     if isinstance(slots[i], int):
-                        # print('not complement: ', ''.join(map(lambda c:'*' if isinstance(c, int) else '.', slots)))
                         return
                 iv_index_0 = msgs[0].netkey.iv_index
                 # seq_0 = min(seq_list) & 0x3fff
@@ -163,10 +158,8 @@ class MessageStreamMgr:
 
             
         elif isinstance(msgs[0]._UpperMsg, Message.SegmentControlMessage):
-            # print(msgs[0]._UpperMsg)
             self._contol_caller(msgs[0].netkey, msgs[0].src, msgs[0].dst, msgs[0]._UpperMsg._opcode, msgs[0]._UpperMsg._parameters)
         elif isinstance(msgs[0]._UpperMsg, Message.SegmentAckMessage):
-            # print(msgs[0]._UpperMsg)
             self._ack_caller()
 
     def get_app_key(self, msg: Message.NetworkMessage):
@@ -237,8 +230,6 @@ class MeshContext:
         iv_index, nid, payload = Message.NetworkMessage.decode(data)
 
         #fast check
-        # print(iv_index, key.iv_index)
-        # print(nid, key.nid)
         if iv_index != (key.iv_index & 0x01) or nid != key.nid & 0x7f:
             return None
 
@@ -272,14 +263,11 @@ class MeshContext:
             if msg is not None:
                 if self._on_network_msg is not None:
                     self._on_network_msg(i, msg)
-                # print(msg._ctl, msg._ttl, msg._seq, "from: %04x" % msg._src, "to: %04x" % msg._dst, msg._UpperMsg)
-                    # print(data.hex())
                 key_index = i
                 msg.netkey = self._netkeys[i]
                 self._msgmgr.append(msg)
                 break
         else:
-            # print('not network')
             return None
         
         return key_index, msg
@@ -316,7 +304,6 @@ class MeshContext:
         else:
             if l > 100:
                 return None
-                # upper_msg = Message.SegmentAccessMessage(1, self.appkeys[app_keyIndex.aid], 1, seq)
             else:
                 if devkey_index is None:
                     upper_msg = Message.AccessMessage(1, self.appkeys[app_keyIndex].aid, pdu)
